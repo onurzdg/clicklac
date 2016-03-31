@@ -1,0 +1,78 @@
+name:                clicklac
+version:             0.1
+synopsis:            Project Template
+description:         Please see README.md
+license:             BSD3
+license-file:        LICENSE
+author:              Onur Ozduygu
+maintainer:          onur.zdg@gmail.com
+copyright:           2016, Onur Ozduygu
+category:            Web
+build-type:          Simple
+cabal-version:       >=1.10
+
+executable clicklac
+  ghc-options: -Wall
+  hs-source-dirs: src
+  main-is: Main.hs
+  default-language: Haskell2010
+  build-depends:
+    aeson                       == 0.11.1.*,
+    lifted-async                < 0.9,
+    base                        >= 4.8 && < 5,
+    base64-bytestring           == 1.0.*,
+    blaze-builder               == 0.4.*, 
+    bytestring                  >= 0.9.1   && < 0.11,
+    bytestring-conversion       < 0.4,
+    case-insensitive            < 1.3,
+    cereal                      < 0.6,
+    clientsession               < 1.0,
+    cookie                      == 0.4.*,
+    containers                  <= 0.6,
+    criterion                   < 12,
+    cql-io                      < 0.16,
+    cql                         < 3.5,
+    data-default-class,
+    directory,
+    either                      < 5.0,
+    email-validate              < 3,
+    exceptions                  < 1.0,
+    hostname                    == 1.*,
+    http-types,
+    lens                        < 4.9,
+    lifted-base                 < 0.2.4.0,
+    lucid,
+    blaze-builder,
+    monad-control               == 1.0.0.4,
+    monad-logger,
+    mtl                         >= 2       && < 3,
+    network,
+    network-uri                 >= 2.6  && < 2.7,
+    nonce                       <= 1.5,
+    resource-pool,
+    postgresql-simple           < 0.6,
+    pwstore-fast                < 2.6,
+    random,
+    readable                    <= 0.4,
+    safe                        < 0.4,
+    servant                     == 0.5.*,
+    servant-docs                == 0.5.*,
+    servant-js                  == 0.5.*,
+    servant-server              == 0.5.*,
+    servant-foreign             == 0.5.*,
+    semigroups                  == 0.18.*,
+    fast-logger,                   
+    text                        >= 0.11    && < 1.3,
+    time                        >= 1.1     && < 1.6,
+    tinylog                     < 0.13,
+    transformers                >= 0.3.0.0 && < 0.5,
+    transformers-base, 
+    unordered-containers        >= 0.2.3.0,
+    unix                        == 2.7.*,
+    uuid                        < 14.0,
+    vault,
+    vector                      < 0.11,
+    wai                         == 3.2.0,
+    wai-extra                   == 3.0.13.1,
+    warp                        == 3.2.1
+
