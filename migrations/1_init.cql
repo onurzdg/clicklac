@@ -1,6 +1,5 @@
 use clicklac;
 
--- use level compaction
 create table user_account (
  id uuid primary key,
  user_name text, -- unique
