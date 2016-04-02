@@ -673,91 +673,91 @@ updateProfile uid prof@Profile{..} = do
            return $ Left [u] 
         _ -> error "Impossible happened in updateProfile"                
     
-  where        
-    updateProfile' :: CassClient m
+ where        
+   updateProfile' :: CassClient m
                   => CQ.BatchM ()
                   -> Bool
                   -> Bool
                   -> Email 'Validated
                   -> Username 'Validated
                   -> m ()
-    updateProfile' updateOp ce cu email uname =
-        runCassOp $ CQ.batch $
-          execState (batchS ce cu email uname)
-                    (CQ.setType BatchLogged >> updateOp)
-      where
-        batchS :: Bool
-               -> Bool
-               -> Email 'Validated
-               -> Username 'Validated
-               -> State (CQ.BatchM ()) ()
-        batchS changeEmail changeUname prevEmail prevUname = do
-          when changeEmail $ modify
-            (>> CQ.addPrepQuery qDelEmail (Identity prevEmail) )          
-          when changeUname $ modify
-            (>> CQ.addPrepQuery qDelUsername (Identity prevUname) )        
+   updateProfile' updateOp ce cu email uname =
+     runCassOp $ CQ.batch $
+       execState (batchS ce cu email uname)
+         (CQ.setType BatchLogged >> updateOp)
+    where
+      batchS :: Bool
+             -> Bool
+             -> Email 'Validated
+             -> Username 'Validated
+             -> State (CQ.BatchM ()) ()
+      batchS changeEmail changeUname prevEmail prevUname = do
+        when changeEmail $ modify
+          (>> CQ.addPrepQuery qDelEmail (Identity prevEmail) )          
+        when changeUname $ modify
+          (>> CQ.addPrepQuery qDelUsername (Identity prevUname) )        
 
-    updateEmailAndUsername changeEmail changeUname newEmail newUname =
+   updateEmailAndUsername changeEmail changeUname newEmail newUname =
         execState (update changeEmail changeUname newEmail newUname) (return ())
-      where 
-        update :: CassClient m
-               => Bool  
-               -> Bool   
-               -> Email 'Validated            
-               -> Username 'Validated
-               -> State (ExceptT UserOpFailure m ()) ()
-        update changeE changeU newE newU = do
-            when changeE $ modify                    
-              (>> insertEmail newE uid)
-            when (changeU) $ modify
-              (>> insertUsername newU uid)
+     where 
+       update :: CassClient m
+              => Bool  
+              -> Bool   
+              -> Email 'Validated            
+              -> Username 'Validated
+              -> State (ExceptT UserOpFailure m ()) ()
+       update changeE changeU newE newU = do
+         when changeE $ modify                    
+           (>> insertEmail newE uid)
+         when (changeU) $ modify
+           (>> insertUsername newU uid)
       
-    qUpdateAcc :: CQ.PrepQuery W (Username 'Validated, Name 'Validated, 
-        Email 'Validated, Maybe (Bio 'Validated), Maybe WebUrl, Maybe AvatarUrl,
-        Maybe (Location 'Validated), UpdatedAt, UserId) ()
-    qUpdateAcc = CQ.prepared
-      "update user_account set user_name =?, name =?,\ 
-       \ email =?, bio =?, url =?, avatar_url =?, location =?, \ 
-       \ updated_at = ? where id =?"
+   qUpdateAcc :: CQ.PrepQuery W (Username 'Validated, Name 'Validated, 
+       Email 'Validated, Maybe (Bio 'Validated), Maybe WebUrl, Maybe AvatarUrl,
+       Maybe (Location 'Validated), UpdatedAt, UserId) ()
+   qUpdateAcc = CQ.prepared
+     "update user_account set user_name =?, name =?,\ 
+      \ email =?, bio =?, url =?, avatar_url =?, location =?, \ 
+      \ updated_at = ? where id =?"
 
-    qDelEmail :: CQ.PrepQuery W (Identity (Email 'Validated)) ()
-    qDelEmail = CQ.prepared
-      "delete from login_by_email where email = ?"
+   qDelEmail :: CQ.PrepQuery W (Identity (Email 'Validated)) ()
+   qDelEmail = CQ.prepared
+     "delete from login_by_email where email = ?"
 
-    qDelUsername :: CQ.PrepQuery W (Identity (Username 'Validated)) ()
-    qDelUsername = CQ.prepared
-      "delete from login_by_user_name where user_name = ?"
+   qDelUsername :: CQ.PrepQuery W (Identity (Username 'Validated)) ()
+   qDelUsername = CQ.prepared
+     "delete from login_by_user_name where user_name = ?"
                  
 deleteUsername :: CassClient m => Username 'Validated -> m ()   
 deleteUsername uname = runCassOp $ CQ.write q p        
-  where
-    q :: CQ.PrepQuery W (Identity (Username 'Validated)) ()
-    q = CQ.prepared "delete from login_by_user_name where user_name = ?"
+ where
+   q :: CQ.PrepQuery W (Identity (Username 'Validated)) ()
+   q = CQ.prepared "delete from login_by_user_name where user_name = ?"
 
-    p :: QueryParams (Identity (Username 'Validated)) 
-    p = defQueryParams (Identity uname)
+   p :: QueryParams (Identity (Username 'Validated)) 
+   p = defQueryParams (Identity uname)
   
 deleteEmail :: CassClient m => Email 'Validated -> m ()
 deleteEmail email = runCassOp $ CQ.write q p 
-  where
-    q :: CQ.PrepQuery W (Identity (Email 'Validated)) ()
-    q = CQ.prepared "delete from login_by_email where email = ?"
+ where
+   q :: CQ.PrepQuery W (Identity (Email 'Validated)) ()
+   q = CQ.prepared "delete from login_by_email where email = ?"
 
-    p :: QueryParams (Identity (Email 'Validated))
-    p = defQueryParams (Identity email)
+   p :: QueryParams (Identity (Email 'Validated))
+   p = defQueryParams (Identity email)
 
 updateLastUserActivity :: MonadIO m
                        => CQ.ClientState
                        -> UserId
                        -> SessionId -> m ()
 updateLastUserActivity s uid sid = CQ.runClient s $ CQ.write q p 
-  where
-    q :: CQ.PrepQuery W (SessionId, UserId) ()
-    q = CQ.prepared "update user_last_activity set session_id = ?, \
+ where
+   q :: CQ.PrepQuery W (SessionId, UserId) ()
+   q = CQ.prepared "update user_last_activity set session_id = ?, \
            \ last_activity_at = toTimestamp(now()) where user_id = ? "
 
-    p :: QueryParams (SessionId, UserId)
-    p = defQueryParams (sid, uid)
+   p :: QueryParams (SessionId, UserId)
+   p = defQueryParams (sid, uid)
 
 insertUsername :: (Username 'Validated) -> UserId -> CQErr UserOpFailure ()
 insertUsername uname uid = do
@@ -766,71 +766,71 @@ insertUsername uname uid = do
    then return ()
    else throwE UsernameExists
   
-    where
-      q :: CQ.PrepQuery W (Username 'Validated, UserId) Row
-      q = CQ.prepared "insert into login_by_user_name(user_name, user_id) \
+ where
+   q :: CQ.PrepQuery W (Username 'Validated, UserId) Row
+   q = CQ.prepared "insert into login_by_user_name(user_name, user_id) \
                       \ values(?, ?) if not exists"
         
-      p :: QueryParams (Username 'Validated, UserId) 
-      p = defQueryParamsMeta (uname, uid)
+   p :: QueryParams (Username 'Validated, UserId) 
+   p = defQueryParamsMeta (uname, uid)
 
 insertEmail :: Email 'Validated -> UserId -> CQErr UserOpFailure ()
 insertEmail e uid = do
   [transRes] <- lift $ runCassOp $ CQ.trans q p
   if rowLength transRes == 1 then return () else throwE EmailExists  
-    where
-      q :: CQ.PrepQuery W (Email 'Validated, UserId) Row
-      q = CQ.prepared "insert into login_by_email(email, user_id) \
+ where
+   q :: CQ.PrepQuery W (Email 'Validated, UserId) Row
+   q = CQ.prepared "insert into login_by_email(email, user_id) \
                      \ values(?, ?) if not exists"
          
-      p :: QueryParams (Email 'Validated, UserId) 
-      p = defQueryParamsMeta (e, uid) -- meta info is needed as it is a LWT  
+   p :: QueryParams (Email 'Validated, UserId) 
+   p = defQueryParamsMeta (e, uid) -- meta info is needed as it is a LWT  
 
 getUserAccById :: CassClient m => UserId -> m (Maybe Account)
 getUserAccById userid = fmap asRecord <$> (runCassOp $ CQ.query1 q p)
-  where     
-    q :: CQ.PrepQuery R (Identity UserId) (TupleType Account)
-    q = CQ.prepared "select id, user_name, name, email, password, bio, url, \  
-         \ avatar_url, location, activated_at, suspended_at, created_at, \ 
-         \ updated_at, state \
-         \ from user_account where id = ?"
+ where     
+   q :: CQ.PrepQuery R (Identity UserId) (TupleType Account)
+   q = CQ.prepared "select id, user_name, name, email, password, bio, url, \  
+        \ avatar_url, location, activated_at, suspended_at, created_at, \ 
+        \ updated_at, state \
+        \ from user_account where id = ?"
 
-    p :: QueryParams (Identity UserId)
-    p = defQueryParams (Identity userid)
+   p :: QueryParams (Identity UserId)
+   p = defQueryParams (Identity userid)
 
 updateAccountState :: CassClient m => UserId -> AccountStateUpdate -> m ()
 updateAccountState uid (ASU state) = runCassOp $ CQ.write (q state) p
-  where       
-    q :: AccountState -> CQ.PrepQuery W (AccountState, UserId) ()
-    q Suspended =
-      CQ.prepared "update user_account set state =?, \
+ where       
+   q :: AccountState -> CQ.PrepQuery W (AccountState, UserId) ()
+   q Suspended =
+     CQ.prepared "update user_account set state =?, \
                   \ suspended_at = toTimestamp(now()) where id =?"
-    q _ = CQ.prepared "update user_account set state =? where id =?"
+   q _ = CQ.prepared "update user_account set state =? where id =?"
   
-    p :: QueryParams (AccountState, UserId)
-    p = defQueryParams (state, uid)
+   p :: QueryParams (AccountState, UserId)
+   p = defQueryParams (state, uid)
 
 getUserIdByEmail :: CassClient m
                  => Email 'Validated
                  -> m (Maybe UserId)
 getUserIdByEmail email = fmap runIdentity <$> (runCassOp $ CQ.query1 q p)
-  where
-    q :: CQ.PrepQuery R (Identity (Email 'Validated)) (Identity UserId)
-    q = CQ.prepared "select user_id from login_by_email where email = ?"
+ where
+   q :: CQ.PrepQuery R (Identity (Email 'Validated)) (Identity UserId)
+   q = CQ.prepared "select user_id from login_by_email where email = ?"
 
-    p :: QueryParams (Identity (Email 'Validated))
-    p = defQueryParams (Identity email)
+   p :: QueryParams (Identity (Email 'Validated))
+   p = defQueryParams (Identity email)
 
 getUserIdByUsername :: CassClient m
                     => Username 'Validated
                     -> m (Maybe UserId) 
 getUserIdByUsername uname = fmap runIdentity <$> (runCassOp $ CQ.query1 q p)
-  where
-    q :: CQ.PrepQuery R (Identity (Username 'Validated)) (Identity UserId)
-    q = CQ.prepared "select user_id from login_by_user_name where user_name = ?"
+ where
+   q :: CQ.PrepQuery R (Identity (Username 'Validated)) (Identity UserId)
+   q = CQ.prepared "select user_id from login_by_user_name where user_name = ?"
 
-    p :: QueryParams (Identity (Username 'Validated))
-    p =  defQueryParams (Identity uname)
+   p :: QueryParams (Identity (Username 'Validated))
+   p =  defQueryParams (Identity uname)
 
 newAccount :: (CassClient m, TimeGetter m, UUIDGenerator m, PasswordEncryptor m)
            => NewAccount 'UnInit
@@ -840,32 +840,31 @@ newAccount (NewAccountU uname email cp name' mbio murl mAvaUrl mloc) = do
   emailRes <- runExceptT $ insertEmail email uid
   unameRes <- runExceptT $ insertUsername uname uid
   createAcc emailRes unameRes uid     
-    where
-      createAcc (Right _) (Right _) uid = do
-        curT <- getCurrentTime
-        ep <- PW.toEncrypted cp
-        runCassOp $ CQ.write qAcc (pAcc (uid, uname, name',
-          email, ep, mbio, murl, mAvaUrl,
-           mloc, curT, curT, Active)) 
-        let acc = NewAccountI uid uname email ep name'
-                mbio murl mAvaUrl mloc curT curT
-        return $ Right acc 
-      createAcc (Left emailExists) (Right _) _ = do
-        deleteUsername uname
-        return $ Left [emailExists]
-      createAcc (Right _) (Left unameExists) _ = do
-        deleteEmail email     
-        return $ Left [unameExists]
-      createAcc (Left e) (Left u) _ = do
-        return $ Left [e, u]
+ where
+   createAcc (Right _) (Right _) uid = do
+     curT <- getCurrentTime
+     ep <- PW.toEncrypted cp
+     runCassOp $ CQ.write qAcc (pAcc (uid, uname, name',
+       email, ep, mbio, murl, mAvaUrl, mloc, curT, curT, Active)) 
+     let acc = NewAccountI uid uname email ep name'
+                 mbio murl mAvaUrl mloc curT curT
+     return $ Right acc 
+   createAcc (Left emailExists) (Right _) _ = do
+     deleteUsername uname
+     return $ Left [emailExists]
+   createAcc (Right _) (Left unameExists) _ = do
+     deleteEmail email     
+     return $ Left [unameExists]
+   createAcc (Left e) (Left u) _ = do
+     return $ Left [e, u]
 
-      qAcc :: CQ.PrepQuery W AccCreationTuple ()
-      qAcc = CQ.prepared
-        "insert into user_account \ 
-        \ (id, user_name, name, email, password, \
-        \ bio, url, avatar_url, location, activated_at, \
-        \ created_at, state) \
-        \ values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+   qAcc :: CQ.PrepQuery W AccCreationTuple ()
+   qAcc = CQ.prepared
+     "insert into user_account \ 
+     \ (id, user_name, name, email, password, \
+     \ bio, url, avatar_url, location, activated_at, \
+     \ created_at, state) \
+     \ values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
-      pAcc :: AccCreationTuple -> QueryParams AccCreationTuple
-      pAcc tup = defQueryParams tup  
+   pAcc :: AccCreationTuple -> QueryParams AccCreationTuple
+   pAcc tup = defQueryParams tup  

@@ -92,11 +92,11 @@ decodeCookieContents content = do
   return $ case decm of
              Just dec -> decode dec
              Nothing  -> Left CookieDecryptFailure
-  where  
-    decode bs =
-      either (Left . CookieDecodeFailure)
-             (Right)
-             (Ser.decode bs)
+ where  
+   decode bs =
+     either (Left . CookieDecodeFailure)
+            (Right)
+            (Ser.decode bs)
 
 cookieHeader :: CookieName -> CookieVal -> ExpirationDate -> CookieHeader
 cookieHeader = CookieHeader .** cookieHeaderBS 

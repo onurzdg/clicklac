@@ -102,8 +102,8 @@ clearTextPass (UnValidatedPass pass)
   | pwLength > 100 = Left PasswordLong
   | pwLength < 6 = Left PasswordShort
   | otherwise = Right $ ClearTextPass pass
-  where
-    pwLength = (T.length pass)    
+ where
+   pwLength = (T.length pass)    
 
 -- Do not use in actual code: exposed to satify the documenent generator
 encrypt' :: ByteString -> Password 'Encrypted  
@@ -118,8 +118,8 @@ verify :: Password 'ClearText
        -> Bool
 verify (ClearTextPass cp) (EncryptedPass ep) =
   TE.encodeUtf8 cp `verifyPW` TE.encodeUtf8 ep
-  where
-    verifyPW pass hash = verifyPasswordWith pbkdf2 (2^) pass hash
+ where
+   verifyPW pass hash = verifyPasswordWith pbkdf2 (2^) pass hash
 
 passwordValidation :: Password 'PWUnvalidated
                    -> OpValidation (Password 'ClearText)

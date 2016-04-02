@@ -120,12 +120,12 @@ err errCode msg errs = throwError $
     503 -> resp err503
     _   | errCode <= 499 -> resp err400
         | otherwise -> resp err500          
-  where
-    resp fn =           
-      fn { errBody = encode (ErrJSONRoot $ ErrJSON errCode msg errs')
-         , errHeaders = [contentType]
-         }
-    errs' = foldl' (\a e -> Err (failMsg e) (failReason e) : a) [] errs
+ where
+   resp fn =           
+     fn { errBody = encode (ErrJSONRoot $ ErrJSON errCode msg errs')
+        , errHeaders = [contentType]
+        }
+   errs' = foldl' (\a e -> Err (failMsg e) (failReason e) : a) [] errs
 
 contentType :: (HeaderName, ByteString)  
 contentType = (hContentType, "application/json")  

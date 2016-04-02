@@ -173,21 +173,21 @@ createSession uid ipAddr = do
               CQ.addPrepQuery qs (asTuple sess) >>
               CQ.addPrepQuery qus (asTuple sess)
   return sess    
-    where      
-     qs :: CQ.PrepQuery W (TupleType Session) ()     
-     qs = CQ.prepared $ unlines'
-       ["insert into session (session_id, user_id, start_at,"
-       ,"end_at, host, remote_ip) values"
-       ,"(?,?,?,?,?,?) USING TTL"
-       ,show duration]
+ where      
+   qs :: CQ.PrepQuery W (TupleType Session) ()     
+   qs = CQ.prepared $ unlines'
+     ["insert into session (session_id, user_id, start_at,"
+     ,"end_at, host, remote_ip) values"
+     ,"(?,?,?,?,?,?) USING TTL"
+     ,show duration]
 
-     qus :: CQ.PrepQuery W (TupleType Session) ()     
-     qus = CQ.prepared $ unlines'
-       ["insert into user_session (session_id, user_id, start_at, "
-       ,"end_at,  host, remote_ip) values (?,?,?,?,?,?) USING TTL "
-       ,show duration]
+   qus :: CQ.PrepQuery W (TupleType Session) ()     
+   qus = CQ.prepared $ unlines'
+     ["insert into user_session (session_id, user_id, start_at, "
+     ,"end_at,  host, remote_ip) values (?,?,?,?,?,?) USING TTL "
+     ,show duration]
 
-     duration = 157680000 :: Int  -- 5 years in seconds 
+   duration = 157680000 :: Int  -- 5 years in seconds 
 
 getSession' :: MonadIO m => CQ.ClientState -> SessionId -> m (Maybe Session)
 getSession' s sid =
@@ -223,15 +223,15 @@ deleteSession :: (CassClient m, MonadBaseControl IO m)
               -> m ()
 deleteSession uid sid = do              
   runCassOp $ CQ.batch $ CQ.setType BatchLogged >>
-                CQ.addPrepQuery qsDel (Identity sid) >>
-                CQ.addPrepQuery qusDel (uid, sid)
-    where 
-      qsDel :: CQ.PrepQuery W (Identity SessionId) ()
-      qsDel = CQ.prepared "delete from session where session_id =?"
+              CQ.addPrepQuery qsDel (Identity sid) >>
+              CQ.addPrepQuery qusDel (uid, sid)
+ where 
+   qsDel :: CQ.PrepQuery W (Identity SessionId) ()
+   qsDel = CQ.prepared "delete from session where session_id =?"
 
-      qusDel :: CQ.PrepQuery W (UserId, SessionId) ()
-      qusDel = CQ.prepared
-        "delete from user_session where user_id =? and session_id =?"  
+   qusDel :: CQ.PrepQuery W (UserId, SessionId) ()
+   qusDel = CQ.prepared
+     "delete from user_session where user_id =? and session_id =?"  
 
 -- | deletes all sessions of a user
 deleteSessions :: (CassClient m, MonadBaseControl IO m) => UserId -> m () 
@@ -240,15 +240,15 @@ deleteSessions uid = do
   deleteUserSessions <- async $ runCassOp $ CQ.write qus pus
   _ <- mapConcurrently (runCassOp . CQ.write qs . ps) sessIds 
   wait deleteUserSessions 
-    where 
-      qus :: CQ.PrepQuery W (Identity UserId) a
-      qus = CQ.prepared "delete from user_session where user_id =?"
+ where 
+   qus :: CQ.PrepQuery W (Identity UserId) a
+   qus = CQ.prepared "delete from user_session where user_id =?"
 
-      pus :: QueryParams (Identity UserId)
-      pus = defQueryParams (Identity uid)
+   pus :: QueryParams (Identity UserId)
+   pus = defQueryParams (Identity uid)
 
-      qs :: CQ.PrepQuery W (Identity SessionId) a
-      qs = CQ.prepared "delete from session where session_id =?"
+   qs :: CQ.PrepQuery W (Identity SessionId) a
+   qs = CQ.prepared "delete from session where session_id =?"
 
-      ps :: SessionId -> QueryParams (Identity SessionId)
-      ps sid = defQueryParams (Identity sid)    
+   ps :: SessionId -> QueryParams (Identity SessionId)
+   ps sid = defQueryParams (Identity sid)    

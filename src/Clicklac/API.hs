@@ -89,8 +89,8 @@ docsBS = TLE.encodeUtf8
        . TL.pack
        . SDC.markdown
        $ SDC.docsWithIntros [intro] (SDC.pretty (Proxy :: Proxy (API'')))
-  where
-    intro = SDC.DocIntro "Welcome" introBody
+ where
+   intro = SDC.DocIntro "Welcome" introBody
   
 introBody :: [String]
 introBody =
@@ -112,8 +112,8 @@ appServerT cfg = (apiV1 cfg) :<|> (apiV0 cfg)
 
 appServer :: AppConfig -> Server API
 appServer cfg = enter appToExcept $ appServerT cfg        
-  where appToExcept :: App :~> ExceptT ServantErr IO
-        appToExcept = Nat $ \a -> runApp a cfg
+ where appToExcept :: App :~> ExceptT ServantErr IO
+       appToExcept = Nat $ \a -> runApp a cfg
   
 app :: AppConfig -> Application
 app conf = serve (Proxy :: Proxy API')
@@ -126,63 +126,63 @@ serve :: (HasServer layout context, HasContextEntry context AppConfig)
       => Proxy layout -> Context context -> Server layout -> Application
 serve p context server =
   toApplication (logger cf) (runRouter (route p context d))
-    where
-      d = Delayed r r r r (\ _ _ _ -> Route server)
-      r = return (Route ())
-      cf = getContextEntry context :: AppConfig
+ where
+   d = Delayed r r r r (\ _ _ _ -> Route server)
+   r = return (Route ())
+   cf = getContextEntry context :: AppConfig
 
 toApplication :: Logger -> RoutingApplication -> Application
 toApplication lg ra req respond = ra req routingRespond            
-  where
-    routingRespond :: RouteResult Response -> IO ResponseReceived
-    routingRespond (Fail err) = do
-      L.err lg $ L.msg $ show err  
-      respond $ responseServantErr err
-    routingRespond (FailFatal err) = do
-      L.err lg $ L.msg $ show err 
-      respond $ responseServantErr err
-    routingRespond (Route v) = respond v 
+ where
+   routingRespond :: RouteResult Response -> IO ResponseReceived
+   routingRespond (Fail err) = do
+     L.err lg $ L.msg $ show err  
+     respond $ responseServantErr err
+   routingRespond (FailFatal err) = do
+     L.err lg $ L.msg $ show err 
+     respond $ responseServantErr err
+   routingRespond (Route v) = respond v 
  
 responseServantErr :: ServantErr -> Response
 responseServantErr ServantErr{..} =
   responseLBS status (RS.contentType : errHeaders) encodedBody
-  where
-    status = HTTP.mkStatus errHTTPCode (B8.pack errReasonPhrase)  
-    encodedBody =
-      case errHTTPCode of
-        400 ->
-          let errBody' = (LBS.toStrict errBody)
-          in RS.encodeErr 400 (T.pack "Invalid request body: " `T.append`
-               TE.decodeUtf8 (fromMaybe errBody'
-                 (asum $ map ($ errBody')
-                   [stripMissingKeyDetails, stripBadJsonDetails])))   
-               (failReason InvalidRequestBody)
+ where
+   status = HTTP.mkStatus errHTTPCode (B8.pack errReasonPhrase)  
+   encodedBody =
+     case errHTTPCode of
+       400 ->
+         let errBody' = (LBS.toStrict errBody)
+         in RS.encodeErr 400 (T.pack "Invalid request body: " `T.append`
+              TE.decodeUtf8 (fromMaybe errBody'
+                (asum $ map ($ errBody')
+                  [stripMissingKeyDetails, stripBadJsonDetails])))   
+              (failReason InvalidRequestBody)
   
-        404 -> RS.encodeErr 404 (failMsg UrlNotFound) (failReason UrlNotFound)
-        405 -> RS.encodeErr 405 (failMsg MethodNotAllowed)
-                                (failReason MethodNotAllowed)
-        415 -> RS.encodeErr 415 (failMsg UnsupportedMedia)
-                                (failReason UnsupportedMedia)
-        -- | When an exception occurs, the callback passed to Warp's
-        --   setOnExceptionResponse will be called. Probably, this error
-        --   condition here will not be executed ever.        
-        500 -> RS.encodeErr 500 (failMsg InternalError)
+       404 -> RS.encodeErr 404 (failMsg UrlNotFound) (failReason UrlNotFound)
+       405 -> RS.encodeErr 405 (failMsg MethodNotAllowed)
+                               (failReason MethodNotAllowed)
+       415 -> RS.encodeErr 415 (failMsg UnsupportedMedia)
+                               (failReason UnsupportedMedia)
+       -- | When an exception occurs, the callback passed to Warp's
+       --   setOnExceptionResponse will be called. Probably, this error
+       --   condition here will not be executed ever.        
+       500 -> RS.encodeErr 500 (failMsg InternalError)
                                 (failReason InternalError)
-        _ -> RS.encodeErr errHTTPCode bodyOrStatusMsg $
-                  T.filter (not . isSpace) (T.pack errReasonPhrase)
+       _ -> RS.encodeErr errHTTPCode bodyOrStatusMsg $
+                 T.filter (not . isSpace) (T.pack errReasonPhrase)
         
-    bodyOrStatusMsg = TL.toStrict . TLE.decodeUtf8 $
-                        bool (LBS.fromStrict $ statusMessage status)
-                        errBody
-                        (not . LBS.null $ errBody)
+   bodyOrStatusMsg = TL.toStrict . TLE.decodeUtf8 $
+                       bool (LBS.fromStrict $ statusMessage status)
+                       errBody
+                       (not . LBS.null $ errBody)
 
     -- | Functions that strip out non-essentail details in Aeson error messages.
     --   They are prone to break with new major releases of Aeson.
     
-    stripMissingKeyDetails errBody' =
-      let lsub = snd $ BS.breakSubstring (B8.pack "key") errBody'
-      in if BS.null lsub then Nothing else Just ('K' `B8.cons` BS.tail lsub)
+   stripMissingKeyDetails errBody' =
+     let lsub = snd $ BS.breakSubstring (B8.pack "key") errBody'
+     in if BS.null lsub then Nothing else Just ('K' `B8.cons` BS.tail lsub)
 
-    stripBadJsonDetails errBody' = 
-      let lsub = snd $ BS.breakSubstring (B8.pack "Failed reading:") errBody'
-      in if BS.null lsub then Nothing else Just (B8.pack "Bad JSON")
+   stripBadJsonDetails errBody' = 
+     let lsub = snd $ BS.breakSubstring (B8.pack "Failed reading:") errBody'
+     in if BS.null lsub then Nothing else Just (B8.pack "Bad JSON")

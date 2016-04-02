@@ -70,15 +70,15 @@ validateUrl (T.unpack -> urlT')
   | isJust $ L.find (== ':') urlT' = Nothing
   | not . null $ L.takeWhile (not . C.isAlpha) urlT' = Nothing
   | otherwise = parse $ "http://" ++ urlT'
-    where
-      parse url' =
-        NU.parseURI url' >>= \pUrl ->
-        NU.uriAuthority pUrl >>= \auth ->
-          if null (NU.uriUserInfo auth) &&
+ where
+   parse url' =
+     NU.parseURI url' >>= \pUrl ->
+      NU.uriAuthority pUrl >>= \auth ->
+        if null (NU.uriUserInfo auth) &&
              (not . null) (NU.uriRegName auth) &&
              (not . L.isInfixOf "www" $ map C.toLower (NU.uriPath  pUrl))       
-           then return . UrlV $ T.pack url'
-           else Nothing
+         then return . UrlV $ T.pack url'
+         else Nothing
   
 instance Validatable (Maybe (Url 'Unvalidated)) where   
   type Unvalidated (Maybe (Url 'Unvalidated)) = Maybe (Url 'Validated)

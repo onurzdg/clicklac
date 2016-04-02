@@ -15,6 +15,6 @@ lookupAppEnv = lookupEnvVar "APP_ENV" Development
 
 lookupEnvVar :: (MonadIO m, Read a) => String -> a -> m a
 lookupEnvVar env def' = fmap readEnvVar (liftIO $ lookupEnv env)
-  where
-   readEnvVar (Just envStr) = maybe def' id (readMaybe envStr)
-   readEnvVar _ = def'               
+ where
+  readEnvVar (Just envStr) = maybe def' id (readMaybe envStr)
+  readEnvVar _ = def'               

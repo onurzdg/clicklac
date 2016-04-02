@@ -140,11 +140,11 @@ createSession' acc pw remoteIp
       then Right `fmap` createSession (accUid acc) remoteIp
       else return $ Left WrongPassword
   | otherwise = return $ Left AccountSuspended          
-  where
-    verifyPass text enc =
-      case PW.clearTextPass text of
-        Right cp -> PW.verify cp enc
-        Left _ -> False          
+ where
+   verifyPass text enc =
+     case PW.clearTextPass text of
+       Right cp -> PW.verify cp enc
+       Left _ -> False          
 
 -- Docs
    

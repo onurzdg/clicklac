@@ -61,14 +61,14 @@ authCheck dbState vkey app req respond = do
           else app (expireTokens req) respond
         Nothing ->  -- session not found in DB
           app (expireTokens req) respond
-  where             
-    extractSid (Just autHSessId) _ = validateSessionId autHSessId
-    extractSid _  (Just cookieH) =  
-      validateSessionId =<< (lookup sessionIdCookieKey $ parseCookies cookieH)
-    extractSid _ _ = Nothing
+ where             
+   extractSid (Just autHSessId) _ = validateSessionId autHSessId
+   extractSid _  (Just cookieH) =  
+     validateSessionId =<< (lookup sessionIdCookieKey $ parseCookies cookieH)
+   extractSid _ _ = Nothing
 
-    expireTokens req' =
-      req' {requestHeaders = expireSessCookie $ requestHeaders req'}    
+   expireTokens req' =
+     req' {requestHeaders = expireSessCookie $ requestHeaders req'}    
   
-    expireSessCookie reqH = (CI.mk . BS8.pack $ "set-cookie",
-                            expiredCookieHeaderBS sessionIdCookieKey) : reqH
+   expireSessCookie reqH = (CI.mk . BS8.pack $ "set-cookie",
+                           expiredCookieHeaderBS sessionIdCookieKey) : reqH
