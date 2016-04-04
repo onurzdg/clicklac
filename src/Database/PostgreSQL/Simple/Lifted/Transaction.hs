@@ -1,4 +1,5 @@
-
+{-# LANGUAGE FlexibleContexts #-}
+    
 module Database.PostgreSQL.Simple.Lifted.Transaction
   (
   -- * Transaction handling
@@ -37,13 +38,14 @@ module Database.PostgreSQL.Simple.Lifted.Transaction
   ) where
 
 import Control.Exception (SomeException, fromException)
-
-import Control.Monad.Catch
-  ( onException
-  , throwM
+import Control.Exception.Lifted 
+  ( mask
+  , onException
   , catch
+  , throwIO
   , try
-  )  
+  ) 
+
 import Database.PostgreSQL.Simple (SqlError)
 import Database.PostgreSQL.Simple.Types (Savepoint)       
 import Database.PostgreSQL.Simple.Transaction
@@ -55,10 +57,12 @@ import qualified Database.PostgreSQL.Simple.Transaction as PS
 
 import Database.PostgreSQL.Simple.Lifted.PostgresClient
        
-withTransaction :: (PostgresClient m) => m a -> m a
+withTransaction :: (PostgresClient m)
+                => m a -> m a
 withTransaction = withTransactionMode PS.defaultTransactionMode
 
-withTransactionLevel :: (PostgresClient m) => IsolationLevel -> m a -> m a
+withTransactionLevel :: (PostgresClient m)
+                     => IsolationLevel -> m a -> m a
 withTransactionLevel lvl =
   withTransactionMode PS.defaultTransactionMode { PS.isolationLevel = lvl }
 
@@ -76,15 +80,18 @@ commit = liftPSGClient PS.commit
 
 rollback :: (PostgresClient m) => m ()
 rollback = liftPSGClient PS.commit           
-              
-withTransactionMode :: (PostgresClient m) => TransactionMode -> m a -> m a
-withTransactionMode mode act = do
-  beginMode mode
-  r <- act `onException` liftPSGClient PS.rollback
-  commit
-  return r
 
-withTransactionSerializable :: (PostgresClient m) => m a -> m a
+withTransactionMode :: (PostgresClient m)
+                    => TransactionMode -> m a -> m a
+withTransactionMode mode act =
+  mask $ \restore -> do                   
+    beginMode mode
+    r <- restore act `onException` rollback
+    commit
+    return r                  
+
+withTransactionSerializable :: (PostgresClient m)
+                            => m a -> m a
 withTransactionSerializable =
   withTransactionModeRetry
     TransactionMode
@@ -99,9 +106,14 @@ withTransactionModeRetry :: (PostgresClient m)
                          -> m a
                          -> m a
 withTransactionModeRetry mode shouldRetry act =
-  retryLoop $ try (act >>= \a -> commit >> return a)
-  where
-    retryLoop :: (PostgresClient m) => m (Either SomeException a) -> m a
+  mask $ \restore -> 
+   retryLoop $ try $ do
+     a <- restore act
+     commit
+     return a
+ where
+    retryLoop :: (PostgresClient m)
+              => m (Either SomeException a) -> m a
     retryLoop act' = do
       beginMode mode
       r <- act'
@@ -110,19 +122,21 @@ withTransactionModeRetry mode shouldRetry act =
           rollback 
           case fmap shouldRetry (fromException e) of
             Just True -> retryLoop act'
-            _ -> throwM e
+            _ -> throwIO e
         Right a -> return a  
 
-withSavepoint :: (PostgresClient m) => m a -> m a
-withSavepoint body = do
-  sp <- newSavepoint 
-  r <- body `onException` rollbackToAndReleaseSavepoint sp
-  releaseSavepoint sp `catch` \err ->
-        if PS.isFailedTransactionError err
-          then rollbackToAndReleaseSavepoint sp
-          else throwM err
-  return r 
-
+withSavepoint :: (PostgresClient m)
+              => m a -> m a
+withSavepoint body =
+  mask $ \restore -> do              
+    sp <- newSavepoint 
+    r <- restore body `onException` rollbackToAndReleaseSavepoint sp
+    releaseSavepoint sp `catch` \err ->
+      if PS.isFailedTransactionError err
+       then rollbackToAndReleaseSavepoint sp
+       else throwIO err
+    return r 
+  
 releaseSavepoint :: (PostgresClient m)
                  => Savepoint
                  -> m ()        
