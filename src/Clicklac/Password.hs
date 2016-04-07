@@ -3,7 +3,6 @@
 {-# LANGUAGE GADTs              #-}
 {-# LANGUAGE KindSignatures     #-}
 {-# LANGUAGE OverloadedStrings  #-}
-{-# LANGUAGE TemplateHaskell    #-}
 {-# LANGUAGE TypeFamilies       #-}    
     
 module Clicklac.Password
@@ -90,8 +89,9 @@ defaultStrength = 15
 toEncrypted :: (PasswordEncryptor m)
             => Password 'ClearText
             -> m (Password 'Encrypted)
-toEncrypted (ClearTextPass p) = (EncryptedPass . TE.decodeUtf8) `liftM`
-    (encrypt (TE.encodeUtf8 p) defaultStrength)
+toEncrypted (ClearTextPass p) =
+  (EncryptedPass . TE.decodeUtf8) `liftM`
+    encrypt (TE.encodeUtf8 p) defaultStrength
 
 getClearText :: Password 'ClearText -> Text   
 getClearText (ClearTextPass p) = p    
@@ -103,7 +103,7 @@ clearTextPass (UnValidatedPass pass)
   | pwLength < 6 = Left PasswordShort
   | otherwise = Right $ ClearTextPass pass
  where
-   pwLength = (T.length pass)    
+   pwLength = T.length pass    
 
 -- Do not use in actual code: exposed to satify the documenent generator
 encrypt' :: ByteString -> Password 'Encrypted  
@@ -111,7 +111,7 @@ encrypt' pass = EncryptedPass . TE.decodeUtf8 $
   unsafePerformIO $ makePasswordWith pbkdf2 pass defaultStrength 
   
 encrypt :: PasswordEncryptor m => ByteString -> Int -> m ByteString        
-encrypt pass strength = encryptPassword pbkdf2 pass strength    
+encrypt = encryptPassword pbkdf2 
 
 verify :: Password 'ClearText
        -> Password 'Encrypted
@@ -119,7 +119,7 @@ verify :: Password 'ClearText
 verify (ClearTextPass cp) (EncryptedPass ep) =
   TE.encodeUtf8 cp `verifyPW` TE.encodeUtf8 ep
  where
-   verifyPW pass hash = verifyPasswordWith pbkdf2 (2^) pass hash
+   verifyPW = verifyPasswordWith pbkdf2 (2^) 
 
 passwordValidation :: Password 'PWUnvalidated
                    -> OpValidation (Password 'ClearText)

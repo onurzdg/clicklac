@@ -116,7 +116,7 @@ instance PostgresClient App where
 
 instance MonadClient App where
   liftClient a = flip runClient a =<< asks csState
-  localState f app = do
+  localState f app = 
     flip local app $
       \conf -> conf {csState = f $ csState conf} 
 
@@ -124,4 +124,4 @@ instance MonadLogger App where
   log l m = asks logger >>= \g -> L.log g l m
     
 runApp :: App a -> AppConfig -> ExceptT ServantErr IO a
-runApp a c = runReaderT (runA a) c
+runApp a = runReaderT (runA a)

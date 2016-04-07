@@ -44,10 +44,10 @@ type UserAPI' =
     :> PostCreated '[JSON] (NewAccount 'Init)
   :<|>  
     AuthProtected :> WithUserId :> ReqBody '[JSON] (OpValidation Profile)
-    :> Put '[JSON] (Profile)
+    :> Put '[JSON] Profile
   :<|>
     AuthProtected :> Capture "userid" UserId :> "account" :> "state"
-    :> ReqBody '[JSON] (AccountStateUpdate) :> PutNoContent '[JSON] () -- should be called by an admin
+    :> ReqBody '[JSON] AccountStateUpdate :> PutNoContent '[JSON] () -- should be called by an admin
   
 userAPI :: ServerT UserAPI App
 userAPI = userAcc

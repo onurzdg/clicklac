@@ -1,4 +1,3 @@
-{-# LANGUAGE TemplateHaskell #-}
     
 module Data.Aeson.TH.Extra where
 

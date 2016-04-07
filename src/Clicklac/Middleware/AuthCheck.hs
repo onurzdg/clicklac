@@ -49,7 +49,7 @@ authCheck dbState vkey app req respond = do
           if sessValid
             then do -- if session cookie used, add its value to req header
               let sidBS =  TE.encodeUtf8 . sessionIdT $ sid
-                  reqH' = if (isNothing mauthH)
+                  reqH' = if isNothing mauthH
                             then (hAuthorization, sidBS) : reqH
                             else reqH
                   -- | Put user id into the vault to avoid making extra DB hits
@@ -64,7 +64,7 @@ authCheck dbState vkey app req respond = do
  where             
    extractSid (Just autHSessId) _ = validateSessionId autHSessId
    extractSid _  (Just cookieH) =  
-     validateSessionId =<< (lookup sessionIdCookieKey $ parseCookies cookieH)
+     validateSessionId =<< lookup sessionIdCookieKey (parseCookies cookieH)
    extractSid _ _ = Nothing
 
    expireTokens req' =

@@ -64,9 +64,9 @@ instance Cql (Url 'Validated) where
 -- Not a robust validation function
 validateUrl :: Text -> Maybe (Url 'Validated)
 validateUrl (T.unpack -> urlT') 
-  | L.isPrefixOf "http://"  urlT' = parse urlT'            
-  | L.isPrefixOf "https://" urlT' = parse urlT'
-  | L.isPrefixOf "http" urlT' = Nothing
+  | "http://" `L.isPrefixOf`  urlT' = parse urlT'            
+  | "https://" `L.isPrefixOf` urlT' = parse urlT'
+  | "http" `L.isPrefixOf` urlT' = Nothing
   | isJust $ L.find (== ':') urlT' = Nothing
   | not . null $ L.takeWhile (not . C.isAlpha) urlT' = Nothing
   | otherwise = parse $ "http://" ++ urlT'

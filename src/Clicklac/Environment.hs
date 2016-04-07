@@ -2,7 +2,8 @@
 module Clicklac.Environment where
 
 import Control.Monad.IO.Class (MonadIO(..))
-import System.Environment (lookupEnv)       
+import System.Environment (lookupEnv)
+import Data.Maybe (fromMaybe)       
 import Text.Read (readMaybe)              
        
 data AppEnvironment 
@@ -16,5 +17,5 @@ lookupAppEnv = lookupEnvVar "APP_ENV" Development
 lookupEnvVar :: (MonadIO m, Read a) => String -> a -> m a
 lookupEnvVar env def' = fmap readEnvVar (liftIO $ lookupEnv env)
  where
-  readEnvVar (Just envStr) = maybe def' id (readMaybe envStr)
+  readEnvVar (Just envStr) = fromMaybe def' (readMaybe envStr)
   readEnvVar _ = def'               

@@ -104,7 +104,7 @@ main = do
               \  port=5432 connect_timeout=5"
   connPool' <- PSP.createConnPool $ PoolConfig connStr 2 (60 * 10) 20        
   -- shutdown hook to execute when server closes
-  let shutdownHook = \closeSock -> 
+  let shutdownHook closeSock = 
         CS.shutdown csClient >>
         PSP.destroyConnPool connPool' >> -- shuts down DB conn pool
         logI "--- Shutting down server ---" >>

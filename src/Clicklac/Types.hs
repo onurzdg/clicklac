@@ -2,9 +2,7 @@
 {-# LANGUAGE FlexibleInstances          #-}    
 {-# LANGUAGE GADTs                      #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}    
-{-# LANGUAGE KindSignatures             #-}
 {-# LANGUAGE RankNTypes                 #-}
-{-# LANGUAGE TemplateHaskell            #-}
    
 module Clicklac.Types
   (

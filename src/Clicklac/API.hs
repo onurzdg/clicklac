@@ -68,27 +68,27 @@ rawAPIs cf = directory cf :<|> myfile cf :<|> docs cf
 
 -- File handler examples   
 myfile :: AppConfig -> Server Raw
-myfile _ req send = do 
+myfile _ req send =  
   send $ responseFile status200 [(hContentType, "text/html")]
                                 "index.html"
                                  Nothing
   
 directory :: AppConfig -> Server Raw
-directory _ req send = do 
+directory _ req send = 
   send $ responseLBS status404 [RS.contentType] $
          RS.encodeErr 404 (failMsg ResourceNotFound)
                           (failReason ResourceNotFound)
 
 ---------- API Docs ------------------------------             
 docs :: AppConfig -> Server Raw
-docs _ req send = do 
+docs _ req send =  
   send $ responseLBS status200 [(hContentType, "text/plain")] docsBS
  
 docsBS :: LBS.ByteString
 docsBS = TLE.encodeUtf8
        . TL.pack
        . SDC.markdown
-       $ SDC.docsWithIntros [intro] (SDC.pretty (Proxy :: Proxy (API'')))
+       $ SDC.docsWithIntros [intro] (SDC.pretty (Proxy :: Proxy API''))
  where
    intro = SDC.DocIntro "Welcome" introBody
   
@@ -108,7 +108,7 @@ introBody =
         
 ---------- Servant Config ----------------------------        
 appServerT :: AppConfig -> ServerT API App        
-appServerT cfg = (apiV1 cfg) :<|> (apiV0 cfg)
+appServerT cfg = apiV1 cfg :<|> apiV0 cfg
 
 appServer :: AppConfig -> Server API
 appServer cfg = enter appToExcept $ appServerT cfg        
@@ -151,7 +151,7 @@ responseServantErr ServantErr{..} =
    encodedBody =
      case errHTTPCode of
        400 ->
-         let errBody' = (LBS.toStrict errBody)
+         let errBody' = LBS.toStrict errBody
          in RS.encodeErr 400 (T.pack "Invalid request body: " `T.append`
               TE.decodeUtf8 (fromMaybe errBody'
                 (asum $ map ($ errBody')

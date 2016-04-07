@@ -61,7 +61,7 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Time.Calendar (Day(..))        
 import Data.Time.Clock (UTCTime(..))       
-import Control.Monad (when)
+import Control.Monad (when, unless)
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Except (throwE, runExceptT, ExceptT(..))       
@@ -186,8 +186,8 @@ instance Cql AccountState where
   ctype = Tagged TextColumn
   toCql (Active)    = CqlText "active"
   toCql (Suspended) = CqlText "suspended"
-  fromCql (CqlText "active")     = Right (Active)
-  fromCql (CqlText "suspended")  = Right (Suspended)
+  fromCql (CqlText "active")     = Right Active
+  fromCql (CqlText "suspended")  = Right Suspended
   fromCql _                      = Left "AccountState: Expected CqlText"   
 
 recordInstance ''AccountStateUpdate
@@ -246,7 +246,7 @@ usernameT (UsernameU u) = u
           
 validateUsername :: Username 'Unvalidated -> Maybe (Username 'Validated)
 validateUsername (T.strip . usernameT ->  n)                 
-  | T.length n <= 15 && not (T.null n) && T.all (isAlphaNum) n =
+  | T.length n <= 15 && not (T.null n) && T.all isAlphaNum n =
     return $ UsernameV n
   | otherwise = Nothing              
 
@@ -565,10 +565,10 @@ instance ToJSON (OpValidation (NewAccount 'UnInit)) where
     , "webUrl"     .= url'
     , "avatarUrl"  .= avaUrl
     , "location"   .= loc
-    , "password"   .= (T.pack "")
+    , "password"   .= T.pack ""
     ]
   toJSON (Failure e) =
-    error $ "Failed converting 'NewAccount 'UnInit: " ++ (show e)
+    error $ "Failed converting 'NewAccount 'UnInit: " ++ show e
 
 --------Profile---------------------------------------
 data Profile = Profile
@@ -618,7 +618,7 @@ deriveToJSON (prefixRemovedOpts 2) ''Profile
 instance ToJSON (OpValidation Profile) where
   toJSON (Success p) = toJSON p
   toJSON (Failure e) =
-    error $ "Failed converting Profile to JSON: " ++ (show e)
+    error $ "Failed converting Profile to JSON: " ++ show e
 
 instance ToSample Profile where
   toSamples _ = singleSample $
@@ -669,7 +669,7 @@ updateProfile uid prof@Profile{..} = do
         Left e@EmailExists ->
            return $ Left [e]
         Left u@UsernameExists -> do
-           when (changeEmail) $ deleteEmail pfEmail
+           when changeEmail $ deleteEmail pfEmail
            return $ Left [u] 
         _ -> error "Impossible happened in updateProfile"                
     
@@ -709,7 +709,7 @@ updateProfile uid prof@Profile{..} = do
        update changeE changeU newE newU = do
          when changeE $ modify                    
            (>> insertEmail newE uid)
-         when (changeU) $ modify
+         when changeU $ modify
            (>> insertUsername newU uid)
       
    qUpdateAcc :: CQ.PrepQuery W (Username 'Validated, Name 'Validated, 
@@ -759,12 +759,10 @@ updateLastUserActivity s uid sid = CQ.runClient s $ CQ.write q p
    p :: QueryParams (SessionId, UserId)
    p = defQueryParams (sid, uid)
 
-insertUsername :: (Username 'Validated) -> UserId -> CQErr UserOpFailure ()
+insertUsername :: Username 'Validated -> UserId -> CQErr UserOpFailure ()
 insertUsername uname uid = do
   [transRes] <- lift $ runCassOp $ CQ.trans q p
-  if rowLength transRes == 1
-   then return ()
-   else throwE UsernameExists
+  unless (rowLength transRes == 1) $ throwE UsernameExists  
   
  where
    q :: CQ.PrepQuery W (Username 'Validated, UserId) Row
@@ -777,7 +775,7 @@ insertUsername uname uid = do
 insertEmail :: Email 'Validated -> UserId -> CQErr UserOpFailure ()
 insertEmail e uid = do
   [transRes] <- lift $ runCassOp $ CQ.trans q p
-  if rowLength transRes == 1 then return () else throwE EmailExists  
+  unless (rowLength transRes == 1) $ throwE EmailExists  
  where
    q :: CQ.PrepQuery W (Email 'Validated, UserId) Row
    q = CQ.prepared "insert into login_by_email(email, user_id) \
@@ -787,7 +785,7 @@ insertEmail e uid = do
    p = defQueryParamsMeta (e, uid) -- meta info is needed as it is a LWT  
 
 getUserAccById :: CassClient m => UserId -> m (Maybe Account)
-getUserAccById userid = fmap asRecord <$> (runCassOp $ CQ.query1 q p)
+getUserAccById userid = fmap asRecord <$> runCassOp (CQ.query1 q p)
  where     
    q :: CQ.PrepQuery R (Identity UserId) (TupleType Account)
    q = CQ.prepared "select id, user_name, name, email, password, bio, url, \  
@@ -813,7 +811,7 @@ updateAccountState uid (ASU state) = runCassOp $ CQ.write (q state) p
 getUserIdByEmail :: CassClient m
                  => Email 'Validated
                  -> m (Maybe UserId)
-getUserIdByEmail email = fmap runIdentity <$> (runCassOp $ CQ.query1 q p)
+getUserIdByEmail email = fmap runIdentity <$> runCassOp (CQ.query1 q p)
  where
    q :: CQ.PrepQuery R (Identity (Email 'Validated)) (Identity UserId)
    q = CQ.prepared "select user_id from login_by_email where email = ?"
@@ -824,7 +822,7 @@ getUserIdByEmail email = fmap runIdentity <$> (runCassOp $ CQ.query1 q p)
 getUserIdByUsername :: CassClient m
                     => Username 'Validated
                     -> m (Maybe UserId) 
-getUserIdByUsername uname = fmap runIdentity <$> (runCassOp $ CQ.query1 q p)
+getUserIdByUsername uname = fmap runIdentity <$> runCassOp (CQ.query1 q p)
  where
    q :: CQ.PrepQuery R (Identity (Username 'Validated)) (Identity UserId)
    q = CQ.prepared "select user_id from login_by_user_name where user_name = ?"
@@ -853,10 +851,9 @@ newAccount (NewAccountU uname email cp name' mbio murl mAvaUrl mloc) = do
      deleteUsername uname
      return $ Left [emailExists]
    createAcc (Right _) (Left unameExists) _ = do
-     deleteEmail email     
+     deleteEmail email 
      return $ Left [unameExists]
-   createAcc (Left e) (Left u) _ = do
-     return $ Left [e, u]
+   createAcc (Left e) (Left u) _ = return $ Left [e, u]
 
    qAcc :: CQ.PrepQuery W AccCreationTuple ()
    qAcc = CQ.prepared
@@ -867,4 +864,4 @@ newAccount (NewAccountU uname email cp name' mbio murl mAvaUrl mloc) = do
      \ values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
    pAcc :: AccCreationTuple -> QueryParams AccCreationTuple
-   pAcc tup = defQueryParams tup  
+   pAcc = defQueryParams

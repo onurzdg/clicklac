@@ -145,7 +145,7 @@ instance ToSample Session where
 generateSessionId :: (NonceGenerator m) => m SessionId
 generateSessionId = liftM SI generateNonce
                      
-validateSessionId :: ByteString -> Maybe (SessionId)
+validateSessionId :: ByteString -> Maybe SessionId
 validateSessionId sidBS = do
   let text = TE.decodeUtf8 sidBS
   guard (T.length text == 24)
@@ -221,7 +221,7 @@ deleteSession :: (CassClient m, MonadBaseControl IO m)
               => UserId
               -> SessionId
               -> m ()
-deleteSession uid sid = do              
+deleteSession uid sid =               
   runCassOp $ CQ.batch $ CQ.setType BatchLogged >>
               CQ.addPrepQuery qsDel (Identity sid) >>
               CQ.addPrepQuery qusDel (uid, sid)

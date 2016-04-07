@@ -30,8 +30,8 @@ instance (HasContextEntry context AppConfig, HasServer rest context)
   
   type ServerT (AuthProtected :> rest) m = ServerT rest m
   
-  route Proxy context subserver = WithRequest $ \request -> do
-    route (Proxy :: Proxy rest) context $
+  route Proxy context subserver = WithRequest $ \request -> 
+    route (Proxy :: Proxy rest) context 
       (addAcceptCheck subserver $ authCheck request)
      where
        authCheck req = do 
@@ -43,8 +43,7 @@ instance (HasContextEntry context AppConfig, HasServer rest context)
              FailFatal err401 {errBody = "Invalid auth header"}
 
 instance HasDocs sublayout => HasDocs (AuthProtected :> sublayout) where
-  docsFor Proxy ep =
-    docsFor (Proxy :: Proxy sublayout) ep  
+  docsFor Proxy = docsFor (Proxy :: Proxy sublayout) 
 
 -- | There are API endpoints (e.g, login) that should be only accessed when
 --   the user is not authenticated yet. Those APIs should reject requests
@@ -56,8 +55,8 @@ instance (HasContextEntry context AppConfig, HasServer rest context)
   
   type ServerT (NotAuthProtected :> rest) m = ServerT rest m
   
-  route Proxy context subserver = WithRequest $ \request -> do
-    route (Proxy :: Proxy rest) context $
+  route Proxy context subserver = WithRequest $ \request -> 
+    route (Proxy :: Proxy rest) context 
       (addAcceptCheck subserver $ authCheck request)
      where
        authCheck req = do
@@ -71,8 +70,7 @@ instance (HasContextEntry context AppConfig, HasServer rest context)
            Nothing -> return $ Route ()
 
 instance HasDocs sublayout => HasDocs (NotAuthProtected :> sublayout) where
-  docsFor Proxy ep =
-    docsFor (Proxy :: Proxy sublayout) ep    
+  docsFor Proxy =  docsFor (Proxy :: Proxy sublayout) 
 
 -- Pass user id to the API after looking it up in the vault  
 data WithUserId
@@ -91,5 +89,4 @@ instance (HasContextEntry context AppConfig, HasServer rest context)
        route (Proxy :: Proxy rest) context $ passToServer subserver uid
 
 instance HasDocs sublayout => HasDocs (WithUserId :> sublayout) where
-  docsFor Proxy ep =
-    docsFor (Proxy :: Proxy sublayout) ep 
+  docsFor Proxy = docsFor (Proxy :: Proxy sublayout) 

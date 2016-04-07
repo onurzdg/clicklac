@@ -8,7 +8,7 @@ import Data.String (IsString(..))
 dropL1 :: Int -> String -> String
 dropL1 n str =         
   let (fLetter, rest) = splitAt 1 . drop n $ str
-  in  (map toLower fLetter) ++ rest
+  in  map toLower fLetter ++ rest
 
 unlines' :: (IsString a) => [String] -> a
 unlines' = fromString . unlines            

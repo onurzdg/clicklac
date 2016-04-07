@@ -95,7 +95,7 @@ decodeCookieContents content = do
  where  
    decode bs =
      either (Left . CookieDecodeFailure)
-            (Right)
+            Right
             (Ser.decode bs)
 
 cookieHeader :: CookieName -> CookieVal -> ExpirationDate -> CookieHeader
