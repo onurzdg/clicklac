@@ -2,7 +2,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses      #-}
 {-# LANGUAGE TypeFamilies               #-}
-
+    
 module Clicklac.Application
   (
   -- * App Monad
@@ -75,13 +75,14 @@ newtype App a = A {
               MonadReader AppConfig, MonadError ServantErr,
               MonadCatch, MonadThrow, MonadBase IO)
   
--- Deriving MonadMask is not possible here because the base monad is ExceptT.
+-- Deriving MonadMask is not possible here because of ExceptT.
   
 instance MonadBaseControl IO App where
 -- type StM App a = StM (ReaderT AppConfig (ExceptT ServantErr IO)) a
   type StM App a = Either ServantErr a
   liftBaseWith f = A $ liftBaseWith $ \q -> f (q . runA)
   restoreM = A . restoreM         
+
   
 instance CookieEncryption App where
  encryptCookie content = do

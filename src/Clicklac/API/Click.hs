@@ -1,10 +1,11 @@
 {-# LANGUAGE DataKinds                  #-}
 {-# LANGUAGE FlexibleInstances          #-}
+{-# LANGUAGE FlexibleContexts           #-}    
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE RecordWildCards            #-}
 {-# LANGUAGE TemplateHaskell            #-}
-{-# LANGUAGE TypeOperators              #-}
+{-# LANGUAGE TypeOperators              #-}    
 
 module Clicklac.API.Click
   ( ClickAPI
@@ -16,9 +17,8 @@ import qualified Data.ByteString.Char8 as BS8
 import Data.Text (Text)
 import qualified Data.Text as T       
 import qualified Data.Text.Read as TR       
-import Data.Int (Int64)
+import Data.Int (Int64) 
 import Data.Maybe (fromJust)
-       
 import Data.Aeson.TH (defaultOptions, deriveJSON)
 import Data.Aeson.TH.Extra (prefixRemovedOpts)
 import Data.Time.Calendar (Day(..))        
@@ -106,13 +106,14 @@ clickAPI = createClick
       :<|> getClicksByUserId
       :<|> updateClick
           
-getClicksByUserId :: PostgresClient m => UserId -> m [Click]
-getClicksByUserId uid = 
+getClicksByUserId ::  UserId -> App [Click]
+getClicksByUserId uid =   
   PS.query  " select id, user_id, click_text, like_count, \
             \ favorite_count, posted_at from click \
             \ where user_id = ? \
             \ order by posted_at desc"
-             (Only uid)          
+             (Only uid)
+  
                 
 deleteClickById :: PostgresClient m => ClickId -> m ()
 deleteClickById cid = 
@@ -126,7 +127,6 @@ createClick uid ClickPost{..} = do
     " insert into click(user_id, click_text, like_count, \
     \ favorite_count, posted_at) values(?,?,0,0,now()) returning id, posted_at"
     (uid, clpText)
-
   return $ addHeader (Location $ BS8.pack ("/click/" ++ show cid) )
     (Click (ClickId cid) uid clpText (LikeCount 0) (FavoriteCount 0) postedAt)
 

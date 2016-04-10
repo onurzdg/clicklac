@@ -3,6 +3,7 @@
 {-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE TemplateHaskell     #-}    
 {-# LANGUAGE TypeFamilies        #-}
+{-# LANGUAGE ScopedTypeVariables #-}    
 
 module Clicklac.Session
   ( Session
@@ -29,7 +30,7 @@ module Clicklac.Session
   , deleteSessions
   ) where
 
-import Control.Monad (guard, liftM)
+import Control.Monad (guard, liftM, void)
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Control (MonadBaseControl)
 import Data.Aeson
@@ -54,6 +55,8 @@ import Control.Concurrent.Async.Lifted
   ( mapConcurrently
   , wait
   , async
+  , withAsync
+  , concurrently
   )
 import Data.Time.Calendar (Day(..))        
 import Data.Time.Clock (UTCTime(..))
@@ -233,13 +236,13 @@ deleteSession uid sid =
    qusDel = CQ.prepared
      "delete from user_session where user_id =? and session_id =?"  
 
--- | deletes all sessions of a user
+-- Deletes all sessions of a user
 deleteSessions :: (CassClient m, MonadBaseControl IO m) => UserId -> m () 
 deleteSessions uid = do 
   sessIds <- fmap ssId <$> getSessions uid
-  deleteUserSessions <- async $ runCassOp $ CQ.write qus pus
-  _ <- mapConcurrently (runCassOp . CQ.write qs . ps) sessIds 
-  wait deleteUserSessions 
+  let us = runCassOp $ CQ.write qus pus
+  void $ foldr conc (return []) (us:map (runCassOp . CQ.write qs . ps) sessIds)
+
  where 
    qus :: CQ.PrepQuery W (Identity UserId) a
    qus = CQ.prepared "delete from user_session where user_id =?"
@@ -251,4 +254,8 @@ deleteSessions uid = do
    qs = CQ.prepared "delete from session where session_id =?"
 
    ps :: SessionId -> QueryParams (Identity SessionId)
-   ps sid = defQueryParams (Identity sid)    
+   ps sid = defQueryParams (Identity sid)
+ 
+   conc ioa ioas = do
+     (a,as) <- concurrently ioa ioas
+     return (a:as)

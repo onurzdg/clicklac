@@ -100,7 +100,7 @@ main = do
                   , destination = Logger warpLoggerSet
                   }
 
-  let connStr = "host=localhost dbname=app user=app password=123456\ 
+  let connStr = "host=localhost dbname=life_goals user=app password=123456\ 
               \  port=5432 connect_timeout=5"
   connPool' <- PSP.createConnPool $ PoolConfig connStr 2 (60 * 10) 20        
   -- shutdown hook to execute when server closes

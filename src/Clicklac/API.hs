@@ -61,27 +61,27 @@ apiV1 _ = authAPI :<|> userAPI :<|> clickAPI
 
 -- Always points to the latest version      
 apiV0 :: AppConfig -> ServerT APIv0 App        
-apiV0 cf = apiV1 cf
+apiV0 = apiV1
 
 rawAPIs :: AppConfig -> Server APIRaw       
 rawAPIs cf = directory cf :<|> myfile cf :<|> docs cf     
 
 -- File handler examples   
 myfile :: AppConfig -> Server Raw
-myfile _ req send =  
+myfile _ _req send =  
   send $ responseFile status200 [(hContentType, "text/html")]
                                 "index.html"
                                  Nothing
   
 directory :: AppConfig -> Server Raw
-directory _ req send = 
+directory _ _req send = 
   send $ responseLBS status404 [RS.contentType] $
          RS.encodeErr 404 (failMsg ResourceNotFound)
                           (failReason ResourceNotFound)
 
 ---------- API Docs ------------------------------             
 docs :: AppConfig -> Server Raw
-docs _ req send =  
+docs _ _req send =  
   send $ responseLBS status200 [(hContentType, "text/plain")] docsBS
  
 docsBS :: LBS.ByteString
