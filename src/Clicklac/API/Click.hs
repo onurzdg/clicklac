@@ -106,7 +106,7 @@ clickAPI = createClick
       :<|> getClicksByUserId
       :<|> updateClick
           
-getClicksByUserId ::  UserId -> App [Click]
+getClicksByUserId :: PostgresClient m => UserId -> m [Click]
 getClicksByUserId uid =   
   PS.query  " select id, user_id, click_text, like_count, \
             \ favorite_count, posted_at from click \
