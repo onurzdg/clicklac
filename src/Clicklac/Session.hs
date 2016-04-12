@@ -51,13 +51,7 @@ import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 import qualified Data.UUID as UUID       
        
-import Control.Concurrent.Async.Lifted
-  ( mapConcurrently
-  , wait
-  , async
-  , withAsync
-  , concurrently
-  )
+import Control.Concurrent.Async.Lifted (concurrently)
 import Data.Time.Calendar (Day(..))        
 import Data.Time.Clock (UTCTime(..))
 import qualified Data.Time.Clock as Clock
