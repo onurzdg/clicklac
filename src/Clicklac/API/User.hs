@@ -18,9 +18,9 @@ import Clicklac.Servant.Combinator
   , NotAuthProtected
   , WithUserId
   )
-import qualified Clicklac.Servant.Response as RS  
+import qualified Clicklac.Servant.Response as RS
+import Clicklac.Types (UserId)              
 import Clicklac.Session (deleteSessions)  
-import Clicklac.Types (UserId)       
 import Clicklac.User
   ( Account (..)
   , InitState(..)
@@ -34,7 +34,7 @@ import Clicklac.User
   , updateAccountState
   ) 
 import Clicklac.Validation       
-
+  
 type UserAPI = "user" :> UserAPI'      
 type UserAPI' =
     AuthProtected :> Capture "userid" UserId

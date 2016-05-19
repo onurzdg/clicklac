@@ -5,9 +5,10 @@
 {-# LANGUAGE OverloadedStrings  #-}
 {-# LANGUAGE TypeFamilies       #-}    
     
-module Clicklac.Password
+module Clicklac.Types.Password
   ( Password(UnValidatedPass)
   , PWState (..)
+  , PasswordEncryptor(..)  
   , clearTextPass
   , getClearText
   , toEncrypted
@@ -15,7 +16,6 @@ module Clicklac.Password
   , verify
   ) where
 
-import Control.Monad (liftM)       
 import Data.ByteString (ByteString)
 import Data.Text (Text)
 import qualified Data.Text as T (length)       
@@ -28,11 +28,15 @@ import Database.CQL.Protocol
   , ColumnType (TextColumn)
   , Value(CqlText)
   )
-import Crypto.PasswordStore (verifyPasswordWith, pbkdf2, makePasswordWith)
+import Crypto.PasswordStore
+  ( verifyPasswordWith
+  , pbkdf2
+  , makePasswordWith
+  , Salt
+  )
 import Data.Aeson (FromJSON(..), ToJSON(..))
-import Data.Aeson.Types (Value(String), typeMismatch)       
+import Data.Aeson.Types (Value(String), typeMismatch)
 
-import Clicklac.Types (PasswordEncryptor(..))       
 import Clicklac.Validation
   ( Validatable(..)
   , ValidationFailure(PasswordLong, PasswordShort)
@@ -81,7 +85,13 @@ instance Cql (Password 'Encrypted) where
   ctype = Tagged TextColumn
   toCql (EncryptedPass p) = CqlText p
   fromCql (CqlText p) = Right (EncryptedPass p)
-  fromCql _           = Left "Expected CqlText"      
+  fromCql _           = Left "Expected CqlText"
+
+class (Monad m) => PasswordEncryptor m where
+  encryptPassword :: (ByteString -> Salt -> Int -> ByteString)
+                  -> ByteString
+                  -> Int
+                  -> m ByteString  
 
 defaultStrength :: Int
 defaultStrength = 15
@@ -90,7 +100,7 @@ toEncrypted :: (PasswordEncryptor m)
             => Password 'ClearText
             -> m (Password 'Encrypted)
 toEncrypted (ClearTextPass p) =
-  (EncryptedPass . TE.decodeUtf8) `liftM`
+  (EncryptedPass . TE.decodeUtf8) `fmap`
     encrypt (TE.encodeUtf8 p) defaultStrength
 
 getClearText :: Password 'ClearText -> Text   
@@ -131,3 +141,5 @@ passwordValidation pass =
 instance Validatable (Password 'PWUnvalidated) where   
   type Unvalidated (Password 'PWUnvalidated) = Password 'ClearText
   validate = passwordValidation  
+
+

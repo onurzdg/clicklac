@@ -4,5 +4,5 @@ cabal.sandbox.config
 
 *.o
 *.hi
-
+TAGS
 log/

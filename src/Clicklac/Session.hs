@@ -1,9 +1,9 @@
 {-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE RecordWildCards     #-}
-{-# LANGUAGE TemplateHaskell     #-}    
+{-# LANGUAGE TemplateHaskell     #-}
 {-# LANGUAGE TypeFamilies        #-}
-{-# LANGUAGE ScopedTypeVariables #-}    
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Clicklac.Session
   ( Session
@@ -12,16 +12,16 @@ module Clicklac.Session
 
   -- * Session Accessors
   , ssUserId
-  , ssId    
+  , ssId
   , ssStartAt
   , ssEndAt
-  , ssHost  
-  , ssIp    
+  , ssHost
+  , ssIp
 
   -- * Session Utils
   , validateSessionId
   , isSessionValid
-  
+
   -- * DB Ops
   , createSession
   , getSession
@@ -30,7 +30,7 @@ module Clicklac.Session
   , deleteSessions
   ) where
 
-import Control.Monad (guard, liftM, void)
+import Control.Monad (guard, void)
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans.Control (MonadBaseControl)
 import Data.Aeson
@@ -38,26 +38,23 @@ import Data.Aeson
   , toJSON
   , (.=)
   , object
-  )       
-import Data.Aeson.TH (defaultOptions, deriveToJSON)       
+  )
+import Data.Aeson.TH (defaultOptions, deriveToJSON)
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Base64.URL as B64URL
 import qualified Data.ByteString as BS
 import Data.Functor.Identity (Identity(..))
-import Data.Maybe(fromJust)       
 import Data.String.Extra (unlines')
-import Data.Text (Text)       
+import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
-import qualified Data.UUID as UUID       
-       
+
 import Control.Concurrent.Async.Lifted (concurrently)
-import Data.Time.Calendar (Day(..))        
 import Data.Time.Clock (UTCTime(..))
 import qualified Data.Time.Clock as Clock
   ( getCurrentTime
   , addUTCTime
-  )       
+  )
 import qualified Database.CQL.IO as CQ
   ( PrepQuery
   , ClientState
@@ -83,37 +80,36 @@ import Database.CQL.Protocol
   , R
   , recordInstance
   )
-import Database.CQL.Protocol.Extra (defQueryParams)  
-import Servant.Docs (ToSample(..), singleSample)  
-import Servant (FromHttpApiData(..))   
+import Database.CQL.Protocol.Extra (defQueryParams)
+import Servant (FromHttpApiData(..))
 
 import Clicklac.Types
-  ( CassClient(..) 
+  ( CassClient(..)
   , TimeGetter(..)
   , NonceGenerator(..)
   , HostnameGetter(..)
   , UserId(..)
   )
-    
+
 newtype SessionId = SI Text
   deriving (Eq, Show)
 
-instance FromHttpApiData SessionId where         
+instance FromHttpApiData SessionId where
   parseUrlPiece = Right . SI -- no need to validate, AuthCheck.hs does it
 
 deriveToJSON defaultOptions ''SessionId
-  
+
 sessionIdT :: SessionId -> Text
-sessionIdT (SI t) = t           
+sessionIdT (SI t) = t
 
 instance Cql SessionId where
   ctype = Tagged TextColumn
   toCql   (SI u) = CqlText u
   fromCql (CqlText u) = Right (SI u)
-  fromCql _           = Left "Expected CqlText" 
+  fromCql _           = Left "Expected CqlText"
 
 data Session = Session
-  { ssId      :: !SessionId 
+  { ssId      :: !SessionId
   , ssUserId  :: !UserId
   , ssStartAt :: !UTCTime
   , ssEndAt   :: !UTCTime
@@ -126,22 +122,12 @@ instance ToJSON Session where
     "id" .= ssId, "userId" .= ssUserId,
     "startAt" .= ssStartAt, "endAt" .= ssEndAt]
 
-recordInstance ''Session  
-  
--- Docs  
-instance ToSample Session where
-  toSamples _ = singleSample $
-    Session (SI "TSHo3gQC4ew3dkPq15NMBRwy")
-            (UserId (fromJust (UUID.fromString "ccdbfee4-f7f8-4112-b050-dcc33ad4d6bf")))
-            (UTCTime (ModifiedJulianDay 57670) 18000)
-            (UTCTime (ModifiedJulianDay 59495) 18000)
-            "host1"
-            Nothing
+recordInstance ''Session
 
 -- inspired by https://goo.gl/28IVJ4
 generateSessionId :: (NonceGenerator m) => m SessionId
-generateSessionId = liftM SI generateNonce
-                     
+generateSessionId = fmap SI generateNonce
+
 validateSessionId :: ByteString -> Maybe SessionId
 validateSessionId sidBS = do
   let text = TE.decodeUtf8 sidBS
@@ -150,10 +136,10 @@ validateSessionId sidBS = do
   guard (BS.length decoded == 18)
   return $ SI text
 
-isSessionValid :: (MonadIO m) => Session -> m Bool               
-isSessionValid sess = do 
+isSessionValid :: (MonadIO m) => Session -> m Bool
+isSessionValid sess = do
   curT <- liftIO Clock.getCurrentTime
-  return $ curT < ssEndAt sess                   
+  return $ curT < ssEndAt sess
 
 ------- DB Ops ------------------------------------------
 createSession :: (CassClient m, NonceGenerator m, HostnameGetter m, TimeGetter m)
@@ -169,75 +155,75 @@ createSession uid ipAddr = do
   runCassOp $ CQ.batch $ CQ.setType BatchLogged >>
               CQ.addPrepQuery qs (asTuple sess) >>
               CQ.addPrepQuery qus (asTuple sess)
-  return sess    
- where      
-   qs :: CQ.PrepQuery W (TupleType Session) ()     
+  return sess
+ where
+   qs :: CQ.PrepQuery W (TupleType Session) ()
    qs = CQ.prepared $ unlines'
      ["insert into session (session_id, user_id, start_at,"
      ,"end_at, host, remote_ip) values"
      ,"(?,?,?,?,?,?) USING TTL"
      ,show duration]
 
-   qus :: CQ.PrepQuery W (TupleType Session) ()     
+   qus :: CQ.PrepQuery W (TupleType Session) ()
    qus = CQ.prepared $ unlines'
      ["insert into user_session (session_id, user_id, start_at, "
      ,"end_at,  host, remote_ip) values (?,?,?,?,?,?) USING TTL "
      ,show duration]
 
-   duration = 157680000 :: Int  -- 5 years in seconds 
+   duration = 157680000 :: Int  -- 5 years in seconds
 
 getSession' :: MonadIO m => CQ.ClientState -> SessionId -> m (Maybe Session)
 getSession' s sid =
-  fmap (fmap asRecord) $ CQ.runClient s $ CQ.query1 sessQ $ sessP sid
+  fmap (fmap asRecord) . CQ.runClient s . CQ.query1 sessQ $ sessP sid
 
 getSession :: (CassClient m)
            => SessionId
            -> m (Maybe Session)
-getSession sid = fmap (fmap asRecord) $ runCassOp $ CQ.query1 sessQ $ sessP sid
-  
+getSession sid = fmap (fmap asRecord) . runCassOp . CQ.query1 sessQ $ sessP sid
+
 sessQ :: CQ.PrepQuery R (Identity SessionId) (TupleType Session)
 sessQ = CQ.prepared "select session_id, user_id, start_at, end_at, \
           \ host, remote_ip from session where session_id =?"
 
 sessP :: SessionId -> QueryParams (Identity SessionId)
-sessP sid = defQueryParams (Identity sid)  
-             
+sessP sid = defQueryParams (Identity sid)
+
 getSessions :: (CassClient m)
             => UserId
             -> m [Session]
-getSessions uid = fmap (fmap asRecord) $ runCassOp $ CQ.query q p
+getSessions uid = fmap (fmap asRecord) . runCassOp $ CQ.query q p
   where
     q :: CQ.PrepQuery R (Identity UserId) (TupleType Session)
     q = CQ.prepared "select session_id, user_id, start_at, end_at, \
           \ host, remote_ip from user_session where user_id =?"
 
     p :: QueryParams (Identity UserId)
-    p = defQueryParams (Identity uid)               
-        
+    p = defQueryParams (Identity uid)
+
 deleteSession :: (CassClient m, MonadBaseControl IO m)
               => UserId
               -> SessionId
               -> m ()
-deleteSession uid sid =               
+deleteSession uid sid =
   runCassOp $ CQ.batch $ CQ.setType BatchLogged >>
               CQ.addPrepQuery qsDel (Identity sid) >>
               CQ.addPrepQuery qusDel (uid, sid)
- where 
+ where
    qsDel :: CQ.PrepQuery W (Identity SessionId) ()
    qsDel = CQ.prepared "delete from session where session_id =?"
 
    qusDel :: CQ.PrepQuery W (UserId, SessionId) ()
    qusDel = CQ.prepared
-     "delete from user_session where user_id =? and session_id =?"  
+     "delete from user_session where user_id =? and session_id =?"
 
 -- Deletes all sessions of a user
-deleteSessions :: (CassClient m, MonadBaseControl IO m) => UserId -> m () 
-deleteSessions uid = do 
+deleteSessions :: (CassClient m, MonadBaseControl IO m) => UserId -> m ()
+deleteSessions uid = do
   sessIds <- fmap ssId <$> getSessions uid
   let us = runCassOp $ CQ.write qus pus
   void $ foldr conc (return []) (us:map (runCassOp . CQ.write qs . ps) sessIds)
 
- where 
+ where
    qus :: CQ.PrepQuery W (Identity UserId) a
    qus = CQ.prepared "delete from user_session where user_id =?"
 
@@ -249,7 +235,7 @@ deleteSessions uid = do
 
    ps :: SessionId -> QueryParams (Identity SessionId)
    ps sid = defQueryParams (Identity sid)
- 
+
    conc ioa ioas = do
      (a,as) <- concurrently ioa ioas
      return (a:as)

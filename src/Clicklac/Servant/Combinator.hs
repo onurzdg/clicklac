@@ -15,7 +15,6 @@ import qualified Data.Vault.Lazy as V
 import Network.Wai (vault)
 import Servant (Proxy(..), (:>))
 import Servant.Server.Internal
-import Servant.Docs (HasDocs(..))       
       
 import Clicklac.Application (AppConfig(..))
 import Clicklac.Types (UserId)
@@ -42,9 +41,6 @@ instance (HasContextEntry context AppConfig, HasServer rest context)
            Nothing -> return $ -- user id not in the vault: no session exists
              FailFatal err401 {errBody = "Invalid auth header"}
 
-instance HasDocs sublayout => HasDocs (AuthProtected :> sublayout) where
-  docsFor Proxy = docsFor (Proxy :: Proxy sublayout) 
-
 -- | There are API endpoints (e.g, login) that should be only accessed when
 --   the user is not authenticated yet. Those APIs should reject requests
 --   if the user is already authenticated.        
@@ -69,8 +65,6 @@ instance (HasContextEntry context AppConfig, HasServer rest context)
                               } 
            Nothing -> return $ Route ()
 
-instance HasDocs sublayout => HasDocs (NotAuthProtected :> sublayout) where
-  docsFor Proxy =  docsFor (Proxy :: Proxy sublayout) 
 
 -- Pass user id to the API after looking it up in the vault  
 data WithUserId
@@ -88,5 +82,3 @@ instance (HasContextEntry context AppConfig, HasServer rest context)
        let uid = fromJust $ V.lookup vKey (vault req) 
        route (Proxy :: Proxy rest) context $ passToServer subserver uid
 
-instance HasDocs sublayout => HasDocs (WithUserId :> sublayout) where
-  docsFor Proxy = docsFor (Proxy :: Proxy sublayout) 

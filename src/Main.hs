@@ -44,17 +44,16 @@ import qualified Web.ClientSession as WCS
 import Clicklac.API (app)
 import Clicklac.Application (AppConfig(..))
 import Clicklac.Environment
-  ( lookupAppEnv
+  ( lookupAppEnv'
   , AppEnvironment(..)
   )        
 import Clicklac.Servant.Response (RequestFailure(BadRequest, InternalError))
 import qualified Clicklac.Servant.Response as RS
-import Clicklac.OpFailure (FailureMsg(..))
 import Clicklac.Middleware.AuthCheck (authCheck)
 
 main :: IO ()
-main = do   
-  appEnv <- lookupAppEnv
+main = do     
+  appEnv <- lookupAppEnv'
     -- set up server logger
   sLogger <- L.new
             . L.setLogLevel L.Info 
@@ -133,11 +132,11 @@ onExceptionResponse :: SomeException -> Response
 onExceptionResponse e
   | Just (_ :: InvalidRequest) <- fromException e =
       responseLBS badRequest400 [RS.contentType] $
-        RS.encodeErr 400 (failMsg BadRequest) (failReason BadRequest)
+        RS.encodeErr' 400 BadRequest
   
   | otherwise = responseLBS internalServerError500 [RS.contentType] $
-                  RS.encodeErr 500 (failMsg InternalError)
-                                   (failReason InternalError)
+                  RS.encodeErr' 500 InternalError
+                                   
 
 onException :: Logger -> Maybe Request -> SomeException -> IO ()
 onException l _ e = 
