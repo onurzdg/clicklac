@@ -1,3 +1,4 @@
+
 {-# LANGUAGE DataKinds                  #-}
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GADTs                      #-}
@@ -75,6 +76,4 @@ type CQErr e a = forall m. CassClient m => ExceptT e m a
 class (Monad m) => TimeGetter m where
   getPosixTime   :: m POSIXTime -- seconds since 1970
   getCurrentTime :: m UTCTime
-
-
-
+  

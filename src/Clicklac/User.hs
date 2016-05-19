@@ -109,27 +109,10 @@ import Database.CQL.Protocol.Extra
  , defQueryParamsMeta
  )
 
-
 import Clicklac.OpFailure (FailureMsg (..))
 import Clicklac.Session (SessionId)
 import Clicklac.Types
-  ( Bio
-  , CQErr
-  , CassClient (..)
-  , Email
-  , PWState (..)
-  , Password (..)  
-  , Location
-  , Name
-  , PasswordEncryptor (..)
-  , TimeGetter (..)
-  , UUIDGenerator (..)
-  , UserId (..)
-  , Username
-  , ValidationState (..)
-  )
 import qualified Clicklac.Types.Password as PW
-import Clicklac.Types.Url (Url)
 import Clicklac.Validation
   ( OpValidation
   , Validatable (..)

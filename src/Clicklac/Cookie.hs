@@ -1,3 +1,4 @@
+
 {-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -51,7 +52,6 @@ data CookieOpFailure
   | SessIdCookieNotFound
   deriving (Show, Eq)
 
-
 instance FailureMsg CookieOpFailure where
   failMsg CorruptedCookie           = "Cookie is corrupted"
   failMsg (CookieDecodeFailure str) = T.pack str
@@ -74,7 +74,6 @@ instance ToByteString CookieHeader where
 
 instance FromHttpApiData CookieHeader where
   parseUrlPiece = Right . CookieHeader . TE.encodeUtf8
-
 
 encodeCookieContents :: (Serialize s, CookieEncryption m)
                      => s

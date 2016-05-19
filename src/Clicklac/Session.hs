@@ -88,7 +88,7 @@ import Clicklac.Types
   , TimeGetter(..)
   , NonceGenerator(..)
   , HostnameGetter(..)
-  , UserId(..)
+  , UserId
   )
 
 newtype SessionId = SI Text
