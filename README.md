@@ -21,7 +21,7 @@ Features
 * User input Validation with Data.Either.Validation
 * Producing meaningful error responses in JSON
 * Producing JSON responses always for everything instead of text/html
-* API documentation generation with servant-docs
+* ~~API documentation generation with servant-docs~~
 * Lifted version of postgresql-simple (I should probably push this as a standalone library to hackage)
 
 Database
