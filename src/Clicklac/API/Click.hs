@@ -13,7 +13,7 @@ module Clicklac.API.Click
   ) where
 
 import Control.Monad (void)
-import qualified Data.ByteString.Char8 as BS8
+import qualified Data.ByteString.UTF8 as UTF8
 import Data.Int (Int64)
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -121,7 +121,7 @@ createClick uid ClickPost{..} = do
     " insert into click(user_id, click_text, like_count, \
     \ favorite_count, posted_at) values(?,?,0,0,now()) returning id, posted_at"
     (uid, clpText)
-  return $ addHeader (Location $ BS8.pack ("/click/" ++ show cid) )
+  return $ addHeader (Location $ UTF8.fromString ("/click/" ++ show cid) )
     (Click (ClickId cid) uid clpText (LikeCount 0) (FavoriteCount 0) postedAt)
 
 updateClick :: PostgresClient m => Click -> ClickId -> m ()
@@ -129,8 +129,3 @@ updateClick Click{..} cid =
   void $ PS.execute " update click set click_text =?, like_count =?, \
                     \ favorite_count =?  where id =?"
                    (clText, clLikeCount, clFavCount, cid)
-
-
-
-
-

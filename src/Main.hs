@@ -5,8 +5,8 @@ module Main where
 
 import Control.Exception (SomeException, catch)      
 import Control.Exception.Base (fromException)
-import Control.Monad (void, when)       
-import qualified Data.ByteString.Char8 as BS8       
+import Control.Monad (void, when)
+import qualified Data.ByteString.UTF8 as UTF8
 import Data.Bool (bool)       
 import qualified Data.Text as T
 import System.Directory (createDirectoryIfMissing)       
@@ -61,8 +61,8 @@ main = do
             . L.setName  (Just $ T.pack "s")
             $ L.defSettings
   let logFlushClose = L.close sLogger 
-      logI = L.log sLogger Info . L.msg . BS8.pack
-      logE = L.log sLogger Error . L.msg . BS8.pack
+      logI = L.log sLogger Info . L.msg . UTF8.fromString
+      logE = L.log sLogger Error . L.msg . UTF8.fromString
 
   let terminateEarly errMsg = logE errMsg >>
                               logFlushClose >>
@@ -94,8 +94,8 @@ main = do
   warpLoggerSet <- newFileLoggerSet 4096 "log/access.log"
   reqLgr <- RL.mkRequestLogger $ 
               def { outputFormat = bool (Apache RL.FromSocket)
-                                         (RL.Detailed True)
-                                         (appEnv == Development)
+                                        (RL.Detailed True)
+                                        (appEnv == Development)
                   , destination = Logger warpLoggerSet
                   }
 

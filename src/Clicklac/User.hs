@@ -42,7 +42,6 @@ module Clicklac.User
   , updateLastUserActivity
   ) where
 
-
 import Control.Monad (unless, when)
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.State.Strict

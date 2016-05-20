@@ -11,7 +11,7 @@ import Data.Char (isSpace)
 import Data.Bool (bool)
 import qualified Data.ByteString.Lazy  as LBS
 import qualified Data.ByteString as BS
-import qualified Data.ByteString.Char8 as B8
+import qualified Data.ByteString.UTF8 as UTF8
 import Data.Foldable (asum)
 import Data.Maybe (fromMaybe)
 import qualified Data.Text as T
@@ -118,7 +118,7 @@ responseServantErr :: ServantErr -> Response
 responseServantErr ServantErr{..} =
   responseLBS status (RS.contentType : errHeaders) encodedBody
  where
-   status = HTTP.mkStatus errHTTPCode (B8.pack errReasonPhrase)
+   status = HTTP.mkStatus errHTTPCode (UTF8.fromString errReasonPhrase)
    encodedBody =
      case errHTTPCode of
        400 ->
@@ -147,9 +147,9 @@ responseServantErr ServantErr{..} =
     --   They are prone to break with new major releases of Aeson.
 
    stripMissingKeyDetails errBody' =
-     let lsub = snd $ BS.breakSubstring (B8.pack "key") errBody'
-     in if BS.null lsub then Nothing else Just ('K' `B8.cons` BS.tail lsub)
+     let lsub = snd $ BS.breakSubstring (UTF8.fromString "key") errBody'
+     in if BS.null lsub then Nothing else Just ("K" `BS.append` BS.tail lsub)
 
    stripBadJsonDetails errBody' =
-     let lsub = snd $ BS.breakSubstring (B8.pack "Failed reading:") errBody'
-     in if BS.null lsub then Nothing else Just (B8.pack "Bad JSON")
+     let lsub = snd $ BS.breakSubstring (UTF8.fromString "Failed reading:") errBody'
+     in if BS.null lsub then Nothing else Just (UTF8.fromString "Bad JSON")

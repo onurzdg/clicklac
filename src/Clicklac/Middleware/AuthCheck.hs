@@ -1,7 +1,7 @@
 
 module Clicklac.Middleware.AuthCheck where
 
-import qualified Data.ByteString.Char8 as BS8
+import qualified Data.ByteString.UTF8 as UTF8
 import qualified Data.CaseInsensitive as CI
 import Data.Maybe (isNothing)
 import qualified Data.Text.Encoding as TE
@@ -70,5 +70,5 @@ authCheck dbState vkey app req respond = do
    expireTokens req' =
      req' {requestHeaders = expireSessCookie $ requestHeaders req'}
 
-   expireSessCookie reqH = (CI.mk . BS8.pack $ "set-cookie",
+   expireSessCookie reqH = (CI.mk . UTF8.fromString $ "set-cookie",
                            expiredCookieHeaderBS sessionIdCookieKey) : reqH

@@ -22,7 +22,8 @@ module Clicklac.Cookie
   , CookieHeader
   ) where
 
-import Data.ByteString.Char8 as BS8
+import Data.ByteString (ByteString)
+import qualified Data.ByteString.UTF8 as UTF8
 import Data.ByteString.Conversion.To (ToByteString (..))
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
@@ -119,7 +120,7 @@ expiredCookieHeaderBS name =
         }
 
 sessionIdCookieKey :: CookieName
-sessionIdCookieKey = BS8.pack "_sid"
+sessionIdCookieKey = UTF8.fromString "_sid"
 
 sessionStoreCookieKey :: CookieName
-sessionStoreCookieKey = BS8.pack "_ssid"
+sessionStoreCookieKey = UTF8.fromString "_ssid"
