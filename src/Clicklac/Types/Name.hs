@@ -1,15 +1,12 @@
 
-{-# LANGUAGE DataKinds          #-}
 {-# LANGUAGE FlexibleInstances  #-}
-{-# LANGUAGE GADTs              #-}
-{-# LANGUAGE KindSignatures     #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies       #-}
 {-# LANGUAGE ViewPatterns       #-}
 
 module Clicklac.Types.Name
   ( nameT
-  , Name(NameU)
+  , Name
   , validateName
   ) where
 
@@ -40,38 +37,35 @@ import Clicklac.Validation
   , success
   )
 
-data Name :: ValidationState -> * where
-  NameV :: Text -> Name 'Validated
-  NameU :: Text -> Name 'Unvalidated
+newtype Name a = Name Text
 
 nameT :: Name a -> Text
-nameT (NameV a) = a
-nameT (NameU b) = b
+nameT (Name a) = a
 
-validateName :: Name 'Unvalidated -> Maybe (Name 'Validated)
-validateName (T.strip . nameT -> n)
-  | T.length n <= 20 && not (T.null n) = return $ NameV n
+validateName :: Text -> Maybe (Name Validated)
+validateName (T.strip -> n)
+  | T.length n <= 20 && not (T.null n) = return $ Name n
   | otherwise = Nothing
 
 deriving instance Show (Name n)
 deriving instance Eq (Name n)
 
-instance FromJSON (Name 'Unvalidated) where
-  parseJSON (String t) = pure $ NameU t
-  parseJSON u = typeMismatch "Expected Name U" u
+instance FromJSON (Name Unvalidated) where
+  parseJSON (String t) = pure $ Name t
+  parseJSON u = typeMismatch "Expected Name" u
 
-instance ToJSON (Name 'Validated) where
-  toJSON (NameV t) = String t
+instance ToJSON (Name Validated) where
+  toJSON (Name t) = String t
 
-instance Cql (Name 'Validated) where
+instance Cql (Name Validated) where
   ctype = Tagged TextColumn
-  toCql (NameV n) = CqlText n
-  fromCql (CqlText n) = Right (NameV n)
-  fromCql _           = Left "Name V: Expected CqlText"
+  toCql (Name n) = CqlText n
+  fromCql (CqlText n) = Right (Name n)
+  fromCql _           = Left "Name: Expected CqlText"
 
-instance Validatable (Name 'Unvalidated) where
-  type Unvalidated (Name 'Unvalidated) = Name 'Validated
-  validate name' =
+instance Validatable (Name Unvalidated) where
+  type Unvalidated' (Name Unvalidated) = Name Validated
+  validate (Name name') =
     maybe (failure $ return InvalidName)
           success
           (validateName name')

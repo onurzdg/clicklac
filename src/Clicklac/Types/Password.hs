@@ -1,18 +1,15 @@
-{-# LANGUAGE DataKinds          #-}
+
 {-# LANGUAGE FlexibleInstances  #-}            
-{-# LANGUAGE GADTs              #-}
-{-# LANGUAGE KindSignatures     #-}
 {-# LANGUAGE OverloadedStrings  #-}
 {-# LANGUAGE TypeFamilies       #-}    
     
 module Clicklac.Types.Password
-  ( Password(UnValidatedPass)
-  , PWState (..)
-  , PasswordEncryptor(..)  
-  , clearTextPass
+  ( PasswordEncryptor(..)
+  , EncryptedPass
+  , ClearTextPass
+  , validatePass
   , getClearText
   , toEncrypted
-  , encrypt'
   , verify
   ) where
 
@@ -20,7 +17,6 @@ import Data.ByteString (ByteString)
 import Data.Text (Text)
 import qualified Data.Text as T (length)       
 import qualified Data.Text.Encoding as TE (encodeUtf8, decodeUtf8)
-import System.IO.Unsafe (unsafePerformIO)
       
 import Database.CQL.Protocol
   ( Cql(..)
@@ -31,12 +27,12 @@ import Database.CQL.Protocol
 import Crypto.PasswordStore
   ( verifyPasswordWith
   , pbkdf2
-  , makePasswordWith
   , Salt
   )
-import Data.Aeson (FromJSON(..), ToJSON(..))
+import Data.Aeson (FromJSON(..))
 import Data.Aeson.Types (Value(String), typeMismatch)
 
+import Clicklac.Types.ValidationState
 import Clicklac.Validation
   ( Validatable(..)
   , ValidationFailure(PasswordLong, PasswordShort)
@@ -45,43 +41,23 @@ import Clicklac.Validation
   , OpValidation
   )           
       
-data PWState 
-  = Encrypted -- ^ Validated
-  | ClearText -- ^ Validated
-  | PWUnvalidated
+newtype EncryptedPass = EncryptedPass Text
+newtype ClearTextPass a = ClearTextPass Text 
 
-data Password :: PWState -> * where 
-   EncryptedPass :: Text
-                 -> Password 'Encrypted     
-   ClearTextPass :: Text
-                 -> Password 'ClearText
-   UnValidatedPass :: Text
-                   -> Password 'PWUnvalidated
-     
-instance Eq (Password 'ClearText) where
+instance Show EncryptedPass where
+  show _ = ""
+
+instance Show (ClearTextPass a) where
+  show _ = ""  
+                          
+instance Eq (ClearTextPass Validated) where
   (ClearTextPass cp1) == (ClearTextPass cp2) = cp1 == cp2
 
-instance Show (Password 'ClearText) where
-  show _ = ""
-
-instance Show (Password 'Encrypted) where
-  show _ = ""
-
-instance Show (Password 'PWUnvalidated) where
-  show _ = ""               
-
-instance FromJSON (Password 'PWUnvalidated) where
-  parseJSON (String p) = pure $ UnValidatedPass p   
-  parseJSON unknown = typeMismatch "Password PWU" unknown
-
-instance ToJSON (Password 'PWUnvalidated) where
-  toJSON (UnValidatedPass p) = String p           
-
-instance FromJSON (Password 'ClearText) where
+instance FromJSON (ClearTextPass Unvalidated) where
   parseJSON (String p) = pure $ ClearTextPass p   
-  parseJSON unknown = typeMismatch "ClearTextPass" unknown  
-
-instance Cql (Password 'Encrypted) where
+  parseJSON unknown = typeMismatch "ClearTextPass" unknown
+  
+instance Cql EncryptedPass where
   ctype = Tagged TextColumn
   toCql (EncryptedPass p) = CqlText p
   fromCql (CqlText p) = Right (EncryptedPass p)
@@ -97,49 +73,42 @@ defaultStrength :: Int
 defaultStrength = 15
                 
 toEncrypted :: (PasswordEncryptor m)
-            => Password 'ClearText
-            -> m (Password 'Encrypted)
+            => ClearTextPass Validated
+            -> m EncryptedPass
 toEncrypted (ClearTextPass p) =
   (EncryptedPass . TE.decodeUtf8) `fmap`
     encrypt (TE.encodeUtf8 p) defaultStrength
 
-getClearText :: Password 'ClearText -> Text   
+getClearText :: ClearTextPass a -> Text   
 getClearText (ClearTextPass p) = p    
 
-clearTextPass :: Password 'PWUnvalidated
-              -> Either ValidationFailure (Password 'ClearText)
-clearTextPass (UnValidatedPass pass) 
+validatePass :: Text 
+             -> Either ValidationFailure (ClearTextPass Validated)
+validatePass pass
   | pwLength > 100 = Left PasswordLong
   | pwLength < 6 = Left PasswordShort
-  | otherwise = Right $ ClearTextPass pass
+  | otherwise = Right (ClearTextPass pass)
  where
-   pwLength = T.length pass    
-
--- Do not use in actual code: exposed to satify the documenent generator
-encrypt' :: ByteString -> Password 'Encrypted  
-encrypt' pass = EncryptedPass . TE.decodeUtf8 $
-  unsafePerformIO $ makePasswordWith pbkdf2 pass defaultStrength 
-  
+   pwLength = T.length pass   
+ 
 encrypt :: PasswordEncryptor m => ByteString -> Int -> m ByteString        
 encrypt = encryptPassword pbkdf2 
 
-verify :: Password 'ClearText
-       -> Password 'Encrypted
+verify :: ClearTextPass Validated
+       -> EncryptedPass
        -> Bool
 verify (ClearTextPass cp) (EncryptedPass ep) =
   TE.encodeUtf8 cp `verifyPW` TE.encodeUtf8 ep
  where
    verifyPW = verifyPasswordWith pbkdf2 (2^) 
 
-passwordValidation :: Password 'PWUnvalidated
-                   -> OpValidation (Password 'ClearText)
-passwordValidation pass =
-  either (failure . return)
-         success
-         (clearTextPass pass)     
+passwordValidation :: ClearTextPass Unvalidated
+                   -> OpValidation (ClearTextPass Validated)
+passwordValidation (ClearTextPass pass) =
+  either (failure . return) success (validatePass pass)     
   
-instance Validatable (Password 'PWUnvalidated) where   
-  type Unvalidated (Password 'PWUnvalidated) = Password 'ClearText
+instance Validatable (ClearTextPass Unvalidated) where   
+  type Unvalidated' (ClearTextPass Unvalidated) = ClearTextPass Validated
   validate = passwordValidation  
 
 

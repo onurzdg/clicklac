@@ -1,6 +1,9 @@
 
 module Clicklac.Types.ValidationState where
 
-data ValidationState
+{-data ValidationState
    = Unvalidated
-   | Validated
+   | Validated-}
+
+data Unvalidated
+data Validated

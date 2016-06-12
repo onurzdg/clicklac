@@ -1,14 +1,11 @@
 
-{-# LANGUAGE DataKinds          #-}
 {-# LANGUAGE FlexibleInstances  #-}
-{-# LANGUAGE GADTs              #-}
-{-# LANGUAGE KindSignatures     #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies       #-}
 
 module Clicklac.Types.Location
   ( locationT
-  , Location (LocU)
+  , Location
   ) where
 
 import Data.Text (Text)
@@ -36,32 +33,29 @@ import Clicklac.Validation
   , success
   )
 
-data Location :: ValidationState -> * where
-  LocV :: Text -> Location 'Validated
-  LocU :: Text -> Location 'Unvalidated
+newtype Location a = Location Text  
 
 locationT :: Location a -> Text
-locationT (LocV l) = l
-locationT (LocU l) = l
+locationT (Location l) = l
 
 deriving instance Show (Location n)
 deriving instance Eq (Location n)
 
-instance FromJSON (Location 'Unvalidated) where
-  parseJSON (String t) = pure $ LocU t
+instance FromJSON (Location Unvalidated) where
+  parseJSON (String t) = pure $ Location t
   parseJSON u = typeMismatch "Expected Location U" u
 
-instance ToJSON (Location 'Validated) where
-  toJSON (LocV t) = String t
+instance ToJSON (Location Validated) where
+  toJSON (Location t) = String t
 
-instance Cql (Location 'Validated) where
+instance Cql (Location Validated) where
   ctype = Tagged TextColumn
-  toCql (LocV b) = CqlText b
-  fromCql (CqlText b) = Right (LocV b)
+  toCql (Location b) = CqlText b
+  fromCql (CqlText b) = Right (Location b)
   fromCql _           = Left "Location V: Expected CqlText"
 
 -- no restrictions for now
-instance Validatable (Maybe (Location 'Unvalidated)) where
-  type Unvalidated (Maybe (Location 'Unvalidated)) = Maybe (Location 'Validated)
-  validate (Just (LocU loc)) = success . return . LocV $ loc
+instance Validatable (Maybe (Location Unvalidated)) where
+  type Unvalidated' (Maybe (Location Unvalidated)) = Maybe (Location Validated)
+  validate (Just (Location a)) = success . return $  Location a
   validate Nothing = success Nothing

@@ -12,7 +12,7 @@ import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 
 import Control.Monad.Trans.Maybe (MaybeT (..))
-import Data.Aeson.TH (deriveJSON)
+import Data.Aeson.TH (deriveFromJSON)
 import Data.Aeson.TH.Extra (prefixRemovedOpts)
 import Data.Text (Text)
 import Servant
@@ -69,10 +69,10 @@ instance FailureMsg UserLoginFailure where
 
 data Login = Login
   { _lgUserId   :: !Text
-  , _lgPassword :: !(Password 'PWUnvalidated)
+  , _lgPassword :: !(ClearTextPass Unvalidated)
   } deriving (Show)
 
-deriveJSON  (prefixRemovedOpts 3) ''Login
+deriveFromJSON  (prefixRemovedOpts 3) ''Login
 
 type AuthAPI = "auth" :> AuthAPI'
 type AuthAPI' =
@@ -112,13 +112,13 @@ authenticateUser :: Login
                  -> Maybe Text
                  -> App (Either UserLoginFailure Session)
 authenticateUser (Login email pw) remoteIp
-  | Just emailv <- validateEmail (EmailU email) = do
+  | Just emailv <- validateEmail email = do
       macc <- runMaybeT $ (MaybeT . getUserAccById) =<<
                           (MaybeT $ getUserIdByEmail emailv)
       maybe (return $ Left UserIdNotFound)
             (\acc -> createSession' acc pw remoteIp) macc
 authenticateUser (Login uname pw) remoteIp
-  | Just unamev <- validateUsername (UsernameU uname) = do
+  | Just unamev <- validateUsername uname = do
       macc <- runMaybeT $ (MaybeT . getUserAccById) =<<
                           (MaybeT $ getUserIdByUsername unamev)
       maybe (return $ Left UserIdNotFound)
@@ -126,17 +126,17 @@ authenticateUser (Login uname pw) remoteIp
 authenticateUser _ _ =  return $ Left InvalidLoginId
 
 createSession' :: Account
-               -> Password 'PWUnvalidated
+               -> ClearTextPass Unvalidated
                -> Maybe Text
                -> App (Either UserLoginFailure Session)
 createSession' acc pw remoteIp
   | accState acc == Active =
-    if verifyPass pw (accPassword acc)
+    if verifyPass (PW.getClearText pw) (accPassword acc)
       then Right `fmap` createSession (accUid acc) remoteIp
       else return $ Left WrongPassword
   | otherwise = return $ Left AccountSuspended
  where
    verifyPass text enc =
-     case PW.clearTextPass text of
+     case PW.validatePass text of
        Right cp -> PW.verify cp enc
        Left _ -> False

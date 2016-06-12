@@ -1,15 +1,12 @@
 
-{-# LANGUAGE DataKinds           #-}
 {-# LANGUAGE FlexibleInstances   #-}
-{-# LANGUAGE GADTs               #-}
-{-# LANGUAGE KindSignatures      #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE StandaloneDeriving  #-}
 {-# LANGUAGE TypeFamilies        #-}
 {-# LANGUAGE ViewPatterns        #-}
 
 module Clicklac.Types.Url
-  ( Url(UrlU)
+  ( Url
   , urlT
   , validateUrl
   ) where
@@ -30,40 +27,37 @@ import Database.CQL.Protocol
   )
 import qualified Network.URI as NU
 
+import Clicklac.Types.ValidationState
 import Clicklac.Validation
   ( Validatable(..)
   , ValidationFailure (InvalidUrl)
   , success
   , failure
   )
-import Clicklac.Types.ValidationState
 
-data Url :: ValidationState -> * where
-  UrlV :: Text -> Url 'Validated
-  UrlU :: Text -> Url 'Unvalidated
+newtype Url a = Url Text
 
 urlT :: Url a -> Text
-urlT (UrlV a) = a
-urlT (UrlU a) = a
+urlT (Url a) = a
 
 deriving instance Show (Url n)
 deriving instance Eq (Url n)
 
-instance ToJSON (Url 'Validated) where
-  toJSON (UrlV e) = String e
+instance ToJSON (Url Validated) where
+  toJSON (Url e) = String e
 
-instance FromJSON (Url 'Unvalidated) where
-  parseJSON (String u) = pure $ UrlU u
+instance FromJSON (Url Unvalidated) where
+  parseJSON (String u) = pure $ Url u
   parseJSON u = typeMismatch "Expected Url U" u
 
-instance Cql (Url 'Validated) where
+instance Cql (Url Validated) where
   ctype = Tagged TextColumn
-  toCql (UrlV b) = CqlText b
-  fromCql (CqlText b) = Right (UrlV b)
+  toCql (Url b) = CqlText b
+  fromCql (CqlText b) = Right (Url b)
   fromCql _           = Left "Url V: Expected CqlText"
 
 -- Not a robust validation function
-validateUrl :: Text -> Maybe (Url 'Validated)
+validateUrl :: Text -> Maybe (Url Validated)
 validateUrl (T.unpack -> urlT')
   | "http://" `L.isPrefixOf`  urlT' = parse urlT'
   | "https://" `L.isPrefixOf` urlT' = parse urlT'
@@ -78,13 +72,13 @@ validateUrl (T.unpack -> urlT')
         if null (NU.uriUserInfo auth) &&
              (not . null) (NU.uriRegName auth) &&
              (not . L.isInfixOf "www" $ map C.toLower (NU.uriPath  pUrl))
-         then return . UrlV $ T.pack url'
+         then return . Url $ T.pack url'
          else Nothing
 
-instance Validatable (Maybe (Url 'Unvalidated)) where
-  type Unvalidated (Maybe (Url 'Unvalidated)) = Maybe (Url 'Validated)
+instance Validatable (Maybe (Url Unvalidated)) where
+  type Unvalidated' (Maybe (Url Unvalidated)) = Maybe (Url Validated)
   validate Nothing = success Nothing
-  validate (Just (UrlU url')) =
+  validate (Just (Url url')) =
     maybe (failure $ return InvalidUrl)
           (success . return)
           (validateUrl url')

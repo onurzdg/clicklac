@@ -1,14 +1,11 @@
 
-{-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE GADTs                 #-}
-{-# LANGUAGE KindSignatures        #-}
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE StandaloneDeriving    #-}
 {-# LANGUAGE TypeFamilies          #-}
 
 module Clicklac.Types.Email
-  ( Email(EmailU)
+  ( Email
   , getEmailT
   , validateEmail
   ) where
@@ -26,50 +23,44 @@ import Database.CQL.Protocol
   )
 import Text.Email.Validate (canonicalizeEmail)
 
+import Clicklac.Types.ValidationState
 import Clicklac.Validation
   ( Validatable (..)
   , ValidationFailure (InvalidEmail)
   , success
   , failure
   )
-import Clicklac.Types.ValidationState (ValidationState(..))              
 
-data Email :: ValidationState -> * where
-  EmailV :: Text -> Email 'Validated
-  EmailU :: Text -> Email 'Unvalidated
+newtype Email a = Email Text
 
 getEmailT :: Email a -> Text
-getEmailT (EmailV e) = e
-getEmailT (EmailU e) = e
+getEmailT (Email e) = e
 
-validateEmail :: Email 'Unvalidated -> Maybe (Email 'Validated)
-validateEmail (EmailU email) =
+validateEmail :: Text -> Maybe (Email Validated)
+validateEmail email =
   case canonicalizeEmail $ TE.encodeUtf8 email of
-    (Just e) -> return . EmailV . TE.decodeUtf8 $ e
+    (Just e) -> return . Email . TE.decodeUtf8 $ e
     _ -> Nothing
 
 deriving instance Eq (Email a)
 deriving instance Show (Email a)
 
-instance ToJSON (Email 'Validated) where
-  toJSON (EmailV e) = String e
+instance ToJSON (Email Validated) where
+  toJSON (Email e) = String e
 
-instance FromJSON (Email 'Unvalidated) where
-  parseJSON (String v) = pure $ EmailU v
+instance FromJSON (Email Unvalidated) where
+  parseJSON (String v) = pure $ Email v
   parseJSON unknown = typeMismatch "Email" unknown
 
-instance ToJSON (Email 'Unvalidated) where
-  toJSON (EmailU e) = String e
-
-instance Cql (Email 'Validated) where
+instance Cql (Email Validated) where
   ctype = Tagged TextColumn
-  toCql (EmailV e) = CqlText e
-  fromCql (CqlText e) = Right (EmailV e)
+  toCql (Email e) = CqlText e
+  fromCql (CqlText e) = Right (Email e)
   fromCql _           = Left "Expected CqlText"
 
-instance Validatable (Email 'Unvalidated) where
-  type Unvalidated (Email 'Unvalidated) = Email 'Validated
-  validate email =
+instance Validatable (Email Unvalidated) where
+  type Unvalidated' (Email Unvalidated) = Email Validated
+  validate (Email email) =
     maybe (failure $ return InvalidEmail)
           success
           (validateEmail email)

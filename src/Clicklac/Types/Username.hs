@@ -1,15 +1,12 @@
 
-{-# LANGUAGE DataKinds          #-}
 {-# LANGUAGE FlexibleInstances  #-}
-{-# LANGUAGE GADTs              #-}
-{-# LANGUAGE KindSignatures     #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies       #-}
 {-# LANGUAGE ViewPatterns       #-}
 
 module Clicklac.Types.Username
   ( usernameT
-  , Username (UsernameU)
+  , Username
   , validateUsername
   ) where
 
@@ -41,42 +38,36 @@ import Clicklac.Validation
   , success
   )
 
-data Username :: ValidationState -> * where
-  UsernameV :: Text -> Username 'Validated
-  UsernameU :: Text -> Username 'Unvalidated
+newtype Username a = Username Text
 
 usernameT :: Username a -> Text
-usernameT (UsernameV u) = u
-usernameT (UsernameU u) = u
+usernameT (Username u) = u
 
-validateUsername :: Username 'Unvalidated -> Maybe (Username 'Validated)
-validateUsername (T.strip . usernameT ->  n)
+validateUsername :: Text -> Maybe (Username Validated)
+validateUsername (T.strip ->  n)
   | T.length n <= 15 && not (T.null n) && T.all isAlphaNum n =
-    return $ UsernameV n
+    return $ Username n
   | otherwise = Nothing
 
 deriving instance Show (Username n)
 deriving instance Eq (Username n)
 
-instance FromJSON (Username 'Unvalidated) where
-  parseJSON (String t) = pure $ UsernameU t
-  parseJSON u = typeMismatch "Expected Username U" u
+instance FromJSON (Username Unvalidated) where
+  parseJSON (String t) = pure $ Username t
+  parseJSON u = typeMismatch "Expected Username " u
 
-instance ToJSON (Username 'Validated) where
-  toJSON (UsernameV t) = String t
+instance ToJSON (Username Validated) where
+  toJSON (Username t) = String t
 
-instance ToJSON (Username 'Unvalidated) where
-  toJSON (UsernameU t) = String t
-
-instance Cql (Username 'Validated) where
+instance Cql (Username Validated) where
   ctype = Tagged TextColumn
-  toCql (UsernameV u) = CqlText u
-  fromCql (CqlText u) = Right (UsernameV u)
-  fromCql _           = Left "Username V: Expected CqlText"
+  toCql (Username u) = CqlText u
+  fromCql (CqlText u) = Right (Username u)
+  fromCql _           = Left "Username: Expected CqlText"
 
-instance Validatable (Username 'Unvalidated) where
-  type Unvalidated (Username 'Unvalidated) = Username 'Validated
-  validate uname =
+instance Validatable (Username Unvalidated) where
+  type Unvalidated' (Username Unvalidated) = Username Validated
+  validate (Username uname) =
     maybe (failure $ return InvalidUsername)
           success
           (validateUsername uname)

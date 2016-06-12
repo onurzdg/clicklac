@@ -1,8 +1,5 @@
 
-{-# LANGUAGE DataKinds          #-}
 {-# LANGUAGE FlexibleInstances  #-}
-{-# LANGUAGE GADTs              #-}
-{-# LANGUAGE KindSignatures     #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies       #-}
 {-# LANGUAGE ViewPatterns       #-}
@@ -10,7 +7,7 @@
 module Clicklac.Types.Bio
   ( bioT
   , validateBio
-  , Bio(BioU)
+  , Bio
   ) where
 
 import Data.Text (Text)
@@ -42,39 +39,36 @@ import Clicklac.Validation
   , success
   )
 
-data Bio :: ValidationState -> * where
-  BioV :: Text -> Bio 'Validated
-  BioU :: Text -> Bio 'Unvalidated
+newtype Bio a = Bio Text
 
 deriving instance Show (Bio b)
 deriving instance Eq (Bio b)
 
-instance FromJSON (Bio 'Unvalidated) where
-  parseJSON (String t) = pure $ BioU t
-  parseJSON u = typeMismatch "Expected Bio U" u
+instance FromJSON (Bio Unvalidated) where
+  parseJSON (String t) = pure $ Bio t
+  parseJSON u = typeMismatch "Expected Bio " u
 
-instance ToJSON (Bio 'Validated) where
-  toJSON (BioV t) = String t
+instance ToJSON (Bio Validated) where
+  toJSON (Bio t) = String t
 
 bioT :: Bio a -> Text
-bioT (BioV a) = a
-bioT (BioU a) = a
+bioT (Bio a) = a
 
-validateBio :: Text -> Maybe (Bio 'Validated)
+validateBio :: Text -> Maybe (Bio Validated)
 validateBio (T.strip -> b)
-  | T.length b <= 160 = Just (BioV b)
+  | T.length b <= 160 = Just (Bio b)
   | otherwise = Nothing
 
-instance Cql (Bio 'Validated) where
+instance Cql (Bio Validated) where
   ctype = Tagged TextColumn
-  toCql (BioV b) = CqlText b
-  fromCql (CqlText b) = Right (BioV b)
+  toCql (Bio b) = CqlText b
+  fromCql (CqlText b) = Right (Bio b)
   fromCql _           = Left "Bio V: Expected CqlText"
 
-instance Validatable (Maybe (Bio 'Unvalidated)) where
-  type Unvalidated (Maybe (Bio 'Unvalidated)) = Maybe (Bio 'Validated)
+instance Validatable (Maybe (Bio Unvalidated)) where
+  type Unvalidated' (Maybe (Bio Unvalidated)) = Maybe (Bio Validated)
   validate Nothing = success Nothing
-  validate (Just (BioU bio')) =
+  validate (Just (Bio bio)) =
     maybe (failure $ return InvalidBio)
         (success . Just)
-        (validateBio bio')
+        (validateBio bio)

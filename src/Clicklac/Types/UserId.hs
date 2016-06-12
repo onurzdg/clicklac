@@ -1,7 +1,5 @@
 
-{-# LANGUAGE DataKinds                   #-}
 {-# LANGUAGE FlexibleInstances           #-}
-{-# LANGUAGE GADTs                       #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving  #-}
 
 module Clicklac.Types.UserId where

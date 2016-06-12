@@ -10,11 +10,9 @@ module Clicklac.Validation
   , Validation(..)
   ) where
 
- 
 import Data.Either.Validation (Validation(..))
-
-import Clicklac.OpFailure (FailureMsg(..))       
-   
+import Clicklac.OpFailure (FailureMsg(..))
+       
 data ValidationFailure 
   = InvalidEmail
   | InvalidUserId
@@ -47,5 +45,5 @@ failure = Failure
 type OpValidation a = Validation[ValidationFailure] a        
    
 class Validatable a where
-  type Unvalidated a :: *    
-  validate :: a -> OpValidation (Unvalidated a)
+  type Unvalidated' a :: *    
+  validate :: a -> OpValidation (Unvalidated' a)

@@ -58,4 +58,3 @@ create table user_last_activity (
  session_id text,
  last_activity_at timestamp
 ) with compaction = {'class' : 'LeveledCompactionStrategy'};
-

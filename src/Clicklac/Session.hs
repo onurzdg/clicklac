@@ -1,9 +1,9 @@
+
 {-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE TemplateHaskell     #-}
 {-# LANGUAGE TypeFamilies        #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 
 module Clicklac.Session
   ( Session

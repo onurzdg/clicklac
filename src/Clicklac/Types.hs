@@ -1,16 +1,9 @@
 
-{-# LANGUAGE DataKinds                  #-}
 {-# LANGUAGE FlexibleInstances          #-}
-{-# LANGUAGE GADTs                      #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE KindSignatures             #-}
 {-# LANGUAGE RankNTypes                 #-}
-{-# LANGUAGE StandaloneDeriving         #-}
-{-# LANGUAGE TypeFamilies               #-}
 
 module Clicklac.Types
   (
-
   -- * Type classes
     CookieEncryption(..)
   , NonceGenerator(..)
@@ -23,15 +16,7 @@ module Clicklac.Types
   , CQErr
 
   -- * Data types
-  , module Clicklac.Types.Location
-  , module Clicklac.Types.UserId
-  , module Clicklac.Types.Name
-  , module Clicklac.Types.Username
-  , module Clicklac.Types.Bio
-  , module Clicklac.Types.Email
-  , module Clicklac.Types.Password
-  , module Clicklac.Types.Url
-  , module Clicklac.Types.ValidationState
+  , module X  
   ) where
 
 import Control.Monad.Trans.Except (ExceptT)
@@ -43,15 +28,15 @@ import qualified Database.CQL.IO as CS
 import Data.Time.Clock (UTCTime)
 import Data.Time.Clock.POSIX (POSIXTime)
 
-import Clicklac.Types.Bio
-import Clicklac.Types.Email
-import Clicklac.Types.Location
-import Clicklac.Types.Name
-import Clicklac.Types.Password
-import Clicklac.Types.UserId
-import Clicklac.Types.Username
-import Clicklac.Types.Url
-import Clicklac.Types.ValidationState
+import Clicklac.Types.Bio as X
+import Clicklac.Types.Email as X
+import Clicklac.Types.Location as X
+import Clicklac.Types.Name as X
+import Clicklac.Types.Password as X
+import Clicklac.Types.UserId as X
+import Clicklac.Types.Username as X
+import Clicklac.Types.Url as X
+import Clicklac.Types.ValidationState as X
 
 ------------ Type Classes ------------------------------
 class Monad m => CookieEncryption m where
