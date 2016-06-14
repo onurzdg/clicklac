@@ -55,13 +55,10 @@ Notes on Coding Practices
 --------------
 I think Data.Either.Validation is great for public APIs - especilly if you want to inform
 API consumers in one response about all fields that do not pass validation. 
-
-You will also notice that I make heavy use of GADTs. The main driver behind this is because
-web services always need to have a contract that their users have to obey. Otherwise, you are
-leaving holes in your APIs and giving consumers of your API an opportunity to trash your database. 
-By parametrizing GADTs based on input state, I can have strong guarantees about what goes into my 
-system's database. Instead of GADTs, one can also use two ADTs to deal with unvalidated and 
-validated input states. Having said that, I think when you have a specific concept that you can map to a data type and you need to construct different versions of that data type, the use of GADTs feel natural.
+You will also notice that I make heavy use of phantom types for validation.
+The main driver behind this is because web services always need to have a contract
+that their users have to obey. Otherwise, you are leaving holes in your APIs and giving
+consumers of your API an opportunity to trash your database. 
 
 
 Additional Notes
