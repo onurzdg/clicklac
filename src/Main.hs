@@ -6,14 +6,19 @@ module Main where
 import Control.Exception (SomeException, catch)      
 import Control.Exception.Base (fromException)
 import Control.Monad (void, when)
+import Data.Bool (bool)
+import Data.Monoid ((<>))
+import Data.ByteString (ByteString)
+import qualified Data.ByteString as BS
 import qualified Data.ByteString.UTF8 as UTF8
-import Data.Bool (bool)       
 import qualified Data.Text as T
 import System.Directory (createDirectoryIfMissing)       
 import System.Exit (die)
        
 import qualified Crypto.Nonce as N
 import Data.Default.Class (def)
+import qualified Data.Configurator as CFG
+import Data.Configurator.Types
 import qualified Database.CQL.IO as CS
 import qualified Database.CQL.Protocol as CP       
 import Database.PostgreSQL.Simple.Pool (PoolConfig (..))
@@ -33,7 +38,8 @@ import Network.HTTP.Types.Status
   , internalServerError500
   )  
 import qualified Network.Wai.Middleware.RequestLogger as RL
-       
+
+import System.FilePath       
 import System.Logger (Level (Info, Error), Logger)
 import qualified System.Logger as L       
 import System.Log.FastLogger (newFileLoggerSet, rmLoggerSet)
@@ -54,7 +60,9 @@ import Clicklac.Middleware.AuthCheck (authCheck)
 main :: IO ()
 main = do     
   appEnv <- lookupAppEnv'
-    -- set up server logger
+  
+  cfg <- CFG.load $ configFile "app.cfg"
+  -- set up server logger
   sLogger <- L.new
             . L.setLogLevel L.Info 
             . L.setOutput (L.Path "log/server.log")
@@ -99,9 +107,9 @@ main = do
                   , destination = Logger warpLoggerSet
                   }
 
-  let connStr = "host=localhost dbname=app user=app password=123456\ 
-              \  port=5432 connect_timeout=5"
-  connPool' <- PSP.createConnPool $ PoolConfig connStr 2 (60 * 10) 20        
+  connStr <- loadPsgConnStr cfg                                       
+  connPool' <- PSP.createConnPool $
+    PoolConfig connStr 2 (60 * 10) 20        
   -- shutdown hook to execute when server closes
   let shutdownHook closeSock = 
         CS.shutdown csClient >>
@@ -143,3 +151,24 @@ onException l _ e =
   when (WP.defaultShouldDisplayException e) 
         $ L.log l Error . L.msg $ T.pack $ show e            
         
+configFile :: FilePath -> [Worth FilePath]
+configFile name = [Required $ "resources" </> name]
+
+loadPsgConnStr :: Config -> IO ByteString
+loadPsgConnStr cfg =
+  psgConnStr
+   <$> require' "psg.host"
+   <*> require' "psg.dbname"
+   <*> require' "psg.user"
+   <*> require' "psg.password"
+   <*> require' "psg.port"
+   <*> require' "psg.connection_timeout"
+ where
+   require' = CFG.require cfg
+   
+   psgConnStr host dbName uname pass port timeout = BS.intercalate " " params
+    where
+      params =
+        ["host=" <> host, "dbname=" <> dbName,
+         "user=" <> uname, "password=" <> pass,
+         "port=" <> port,  "connect_timeout=" <> timeout]          

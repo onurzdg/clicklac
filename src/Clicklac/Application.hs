@@ -82,12 +82,10 @@ instance MonadBaseControl IO App where
   restoreM = A . restoreM
 
 instance CookieEncryption App where
- encryptCookie content = do
-   key <- asks clientSessKey
-   liftIO . WCS.encryptIO key $ content
- decryptCookie dataBS64 = do
-   key <- asks clientSessKey
-   return $ WCS.decrypt key dataBS64
+ encryptCookie content = 
+   liftIO . flip WCS.encryptIO content =<< asks clientSessKey
+ decryptCookie dataBS64 = 
+   flip WCS.decrypt dataBS64 <$> asks clientSessKey
 
 instance NonceGenerator App where
   generateNonce = N.nonce128urlT =<< asks nonceGen

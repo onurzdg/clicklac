@@ -27,7 +27,7 @@ module Clicklac.User
 
 import Control.Monad (unless, when)
 import Control.Monad.IO.Class (MonadIO)
-import Control.Monad.State.Strict
+import Control.Monad.Trans.State
   ( State
   , execState
   , modify
@@ -220,7 +220,7 @@ instance FromJSON (OpValidation(NewAccount Validated)) where
       <*> o .:! "webUrl"
       <*> o .:! "avatarUrl"
       <*> o .:! "location"
-    )
+    ) 
   parseJSON unknown = typeMismatch "NewAccount" unknown
 
 instance Show (NewAccount a) where
@@ -255,7 +255,7 @@ validateProfile (Profile uname email name' mbio mwebUrl mavatarUrl mloc) =
 
 instance FromJSON (OpValidation (Profile Validated)) where
   parseJSON (Object o) = validateProfile <$>
-   (Profile 
+    (Profile 
       <$> o .:  "username"
       <*> o .:  "email"
       <*> o .:  "name"
@@ -263,7 +263,7 @@ instance FromJSON (OpValidation (Profile Validated)) where
       <*> o .:! "webUrl"
       <*> o .:! "avatarUrl"
       <*> o .:! "location"
-    )
+    ) 
   parseJSON unknown = typeMismatch "Profile" unknown
 
 instance ToJSON (Profile Validated) where
